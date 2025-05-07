@@ -13,7 +13,7 @@ It aims to replicate the original library's behavior, possibly making it crosspl
 | -------------                                                                             | -               |------------- | 
 | int scePadInit()                                                                          |✅              |
 | int scePadOpen(int userID, int, int, void*)                                               |⚠️              | The handle numbers are not accurate to libScePad's. Probably not important though
-| int scePadSetParticularMode(bool mode)                                                    |✅              |
+| int scePadSetParticularMode(bool mode)                                                    |⚠️              | Orientation data missing
 | int scePadReadState(int handle, void* data)                                               |✅              |
 | int scePadSetLightBar(int handle, s_SceLightBar* lightbar)                                |✅              |
 | int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* containerIdInfo) |❌              |
