@@ -2,7 +2,7 @@
 An open source version of the official sony controller library (dualshock 4/dualsense).
 It aims to replicate the original library's behavior, possibly making it crossplatform
 
->hidapi.dll location = out\build\(your build profile)\src\thirdparty\hidapi\src\windows
+>hidapi.dll location = out\build\\(your build profile)\src\thirdparty\hidapi\src\windows
 
 ## Progress
 
