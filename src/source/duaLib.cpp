@@ -124,8 +124,8 @@ bool GetID(const char* narrowPath, const char** ID, int* size) {
 	}
 
 	SetupDiDestroyDeviceInfoList(devs);
-	return false;
 #endif
+	return false;
 }
 
 struct controller {
