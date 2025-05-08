@@ -325,6 +325,8 @@ int watchFunc() {
 
 					for (hid_device_info* info = head; info; info = info->next) {
 						hid_device* handle = hid_open_path(info->path);
+						std::cout << handle << std::endl;
+						std::cout << info->path << std::endl;
 						if (!handle) continue;
 						hid_set_nonblocking(handle, 1);
 
@@ -341,6 +343,7 @@ int watchFunc() {
 
 							if (!already) {
 
+								std::cout << "new" << std::endl;
 								std::lock_guard<std::mutex> guard(g_controllers[i].lock);
 								g_controllers[i].handle = handle;
 								g_controllers[i].macAddress = newMac;
