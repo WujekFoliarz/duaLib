@@ -171,7 +171,6 @@ int readFunc() {
 			if (g_controllers[i].valid && g_controllers[i].opened) {
 				allInvalid = false;
 
-			#pragma region Dualsense USB
 				if (g_controllers[i].deviceType == DUALSENSE &&
 					g_controllers[i].connectionType == HID_API_BUS_USB) {
 					ReportIn01USB  inputData = {};
@@ -204,7 +203,6 @@ int readFunc() {
 							outputData.State.AllowLedColor = true;
 						}
 
-					#pragma region Player LED
 						bool oldStyle =
 							((g_controllers[i].versionReport.HardwareInfo & 0x00FFFF00) < 0x00000400);
 						switch (g_controllers[i].playerIndex) {
@@ -215,6 +213,7 @@ int readFunc() {
 								outputData.State.PlayerLight4 = false;
 								outputData.State.PlayerLight5 = false;
 								break;
+
 							case 2:
 								outputData.State.PlayerLight1 = false;
 								outputData.State.PlayerLight2 = oldStyle ? true : true;
@@ -222,6 +221,7 @@ int readFunc() {
 								outputData.State.PlayerLight4 = oldStyle ? true : false;
 								outputData.State.PlayerLight5 = false;
 								break;
+
 							case 3:
 								outputData.State.PlayerLight1 = true;
 								outputData.State.PlayerLight2 = oldStyle ? false : true;
@@ -229,6 +229,7 @@ int readFunc() {
 								outputData.State.PlayerLight4 = false;
 								outputData.State.PlayerLight5 = oldStyle ? true : false;
 								break;
+
 							case 4:
 								outputData.State.PlayerLight1 = true;
 								outputData.State.PlayerLight2 = true;
@@ -237,13 +238,13 @@ int readFunc() {
 								outputData.State.PlayerLight5 = oldStyle ? true : false;
 								break;
 						}
+
 						if (outputData.State.PlayerLight1 != g_controllers[i].lastOutputState.PlayerLight1 ||
 							outputData.State.PlayerLight2 != g_controllers[i].lastOutputState.PlayerLight2 ||
 							outputData.State.PlayerLight3 != g_controllers[i].lastOutputState.PlayerLight3 ||
 							outputData.State.PlayerLight4 != g_controllers[i].lastOutputState.PlayerLight4) {
 							outputData.State.AllowPlayerIndicators = true;
 						}
-					#pragma endregion
 
 						if (!inputData.State.ButtonMute && g_controllers[i].currentInputState.ButtonMute) {
 							g_controllers[i].isMicMuted = !g_controllers[i].isMicMuted;
@@ -269,9 +270,6 @@ int readFunc() {
 						g_controllers[i].currentInputState = inputData.State;
 					}
 				}
-			#pragma endregion
-
-			#pragma region Dualsense BT
 				else if (g_controllers[i].deviceType == DUALSENSE &&
 						 g_controllers[i].connectionType == HID_API_BUS_BLUETOOTH) {
 					ReportIn31  inputData = {};
@@ -320,15 +318,13 @@ int readFunc() {
 
 					g_controllers[i].currentInputState = inputData.Data.State.StateData;
 				}
-			#pragma endregion
-
 			}
 			else if (!g_controllers[i].valid && g_controllers[i].opened) {
 				g_controllers[i].lastPath = "";
 				g_controllers[i].macAddress = "";
 				g_controllers[i].wasDisconnected = true;
 			}
-		} 
+		}
 
 		if (allInvalid) {
 			std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -336,11 +332,10 @@ int readFunc() {
 		else {
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
-	} 
+	}
 
 	return 0;
 }
-
 
 int watchFunc() {
 	while (g_threadRunning) {

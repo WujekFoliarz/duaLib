@@ -195,7 +195,7 @@ struct USBGetStateData { // 63
 	// 3 for vibration
 	/*48  */ uint32_t DeviceTimeStamp;
 	/*52.0*/ uint8_t PowerPercent : 4; // 0x00-0x0A
-	/*52.4*/ PowerState PowerState : 4;
+	/*52.4*/ PowerState powerState : 4;
 	/*53.0*/ uint8_t PluggedHeadphones : 1;
 	/*53.1*/ uint8_t PluggedMic : 1;
 	/*53.2*/ uint8_t MicMuted : 1; // Mic muted by powersave/mute command
