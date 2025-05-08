@@ -611,27 +611,20 @@ int scePadReadState(int handle, void* data) {
 }
 
 int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* containerIdInfo) {
-#ifdef _WIN32
+#ifdef _WIN32 // Windows only for now
 	for (int i = 0; i < DEVICE_COUNT; i++) {
 		std::lock_guard<std::mutex> guard(g_controllers[i].lock);
-
 		if (g_controllers[i].sceHandle == handle && g_controllers[i].id != "" && g_controllers[i].idSize != 0) {
 			s_ScePadContainerIdInfo info = {};
 			info.size = g_controllers[i].idSize;
-
-		#ifdef _WIN32
-			wchar_t buffer[sizeof(info.id)];
-			MultiByteToWideChar(CP_UTF8, 0, g_controllers[i].id, -1, buffer, static_cast<int>(sizeof(info.id)));
-			std::memcpy(info.id, buffer, sizeof(info.id));
-		#else
-			std::setlocale(LC_ALL, "en_US.UTF-8");
-			std::mbstowcs(g_controllers[i].id, info.id, sizeof(info.id));
-		#endif
-			
+			strncpy(info.id, g_controllers[i].id, sizeof(info.id) - 1);
+			info.id[sizeof(info.id) - 1] = '\0';
 			*containerIdInfo = info;
 			return 0;
 		}
 	}
+	containerIdInfo->size = 0;
+	containerIdInfo->id[0] = '\0';
 #endif
 	return -1;
 }
@@ -665,6 +658,10 @@ int main() {
 	l.g = 255;
 	scePadSetLightBar(handle, &l);
 	getchar();
+
+	s_ScePadContainerIdInfo info;
+	scePadGetContainerIdInformation(handle, &info);
+	std::wcout << info.id << std::endl;
 
 	return 0;
 }

@@ -88,9 +88,9 @@ typedef struct {
 
 } s_ScePadData;
 
-#pragma pack(push, 1) 
+#pragma pack(push, 1)
 struct s_ScePadContainerIdInfo {
-	DWORD size;
-	wchar_t id[0x2000];
+	uint32_t size;
+	char id[0x2000]; // UTF-8 string
 };
 #pragma pack(pop)
