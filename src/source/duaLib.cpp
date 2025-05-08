@@ -161,7 +161,7 @@ std::atomic<bool> g_particularMode = false;
 std::thread g_readThread;
 std::thread g_watchThread;
 
-int read() {
+int readFunc() {
 	while (g_threadRunning) {
 		bool allInvalid = true;
 		for (int i = 0; i < DEVICE_COUNT; i++) {
@@ -321,7 +321,7 @@ int read() {
 	return 0;
 }
 
-int watch() {
+int watchFunc() {
 	while (g_threadRunning) {
 		for (int i = 0; i < MAX_CONTROLLER_COUNT; ++i) {
 			bool valid;
@@ -461,8 +461,8 @@ int scePadInit() {
 			return res;
 
 		g_threadRunning = true;
-		g_readThread = std::thread(read);
-		g_watchThread = std::thread(watch);
+		g_readThread = std::thread(readFunc);
+		g_watchThread = std::thread(watchFunc);
 		g_readThread.detach();
 		g_watchThread.detach();
 	}
