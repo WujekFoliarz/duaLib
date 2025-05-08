@@ -82,10 +82,12 @@ jobs:
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest --build-config ${{ matrix.build_type }}    
   release:
+    name: Release
     runs-on: ${{ matrix.os }}
+    needs: build
     steps:
     - uses: actions/download-artifact@v4
       with:
-        name: my-artifact
+        name: static-site
     - name: Display structure of downloaded files
       run: ls -R
