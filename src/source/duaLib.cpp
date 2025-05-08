@@ -198,7 +198,8 @@ int readFunc() {
 
 						if (outputData.State.LedRed != g_controllers[i].lastOutputState.LedRed ||
 							outputData.State.LedGreen != g_controllers[i].lastOutputState.LedGreen ||
-							outputData.State.LedBlue != g_controllers[i].lastOutputState.LedBlue) {
+							outputData.State.LedBlue != g_controllers[i].lastOutputState.LedBlue || 
+							g_controllers[i].wasDisconnected) {
 							outputData.State.AllowLedColor = true;
 						}
 
@@ -241,11 +242,12 @@ int readFunc() {
 						if (outputData.State.PlayerLight1 != g_controllers[i].lastOutputState.PlayerLight1 ||
 							outputData.State.PlayerLight2 != g_controllers[i].lastOutputState.PlayerLight2 ||
 							outputData.State.PlayerLight3 != g_controllers[i].lastOutputState.PlayerLight3 ||
-							outputData.State.PlayerLight4 != g_controllers[i].lastOutputState.PlayerLight4) {
+							outputData.State.PlayerLight4 != g_controllers[i].lastOutputState.PlayerLight4 || 
+							g_controllers[i].wasDisconnected) {
 							outputData.State.AllowPlayerIndicators = true;
 						}
 
-						if (!inputData.State.ButtonMute && g_controllers[i].currentInputState.ButtonMute) {
+						if (!inputData.State.ButtonMute && g_controllers[i].currentInputState.ButtonMute || g_controllers[i].wasDisconnected) {
 							g_controllers[i].isMicMuted = !g_controllers[i].isMicMuted;
 							outputData.State.MuteLightMode = g_controllers[i].isMicMuted ? MuteLight::On : MuteLight::Off;
 							outputData.State.MicMute = g_controllers[i].isMicMuted;
@@ -325,8 +327,7 @@ int watchFunc() {
 
 					for (hid_device_info* info = head; info; info = info->next) {
 						hid_device* handle = hid_open_path(info->path);
-						std::cout << handle << std::endl;
-						std::cout << info->path << std::endl;
+
 						if (!handle) continue;
 						hid_set_nonblocking(handle, 1);
 
@@ -343,7 +344,6 @@ int watchFunc() {
 
 							if (!already) {
 
-								std::cout << "new" << std::endl;
 								std::lock_guard<std::mutex> guard(g_controllers[i].lock);
 								g_controllers[i].handle = handle;
 								g_controllers[i].macAddress = newMac;
