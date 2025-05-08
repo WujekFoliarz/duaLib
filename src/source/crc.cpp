@@ -1,11 +1,11 @@
 ﻿#include "crc.h"
 
-UINT32 compute(unsigned char* buffer, size_t len) {
-	UINT32 result = crcSeed;
+uint32_t compute(unsigned char* buffer, size_t len) {
+    uint32_t result = crcSeed;
 
-	for (size_t i = 0; i < len; i++) {
-		result = hashTable[((unsigned char)result) ^ ((unsigned char)buffer[i])] ^ (result >> 8);
-	}
+    for (size_t i = 0; i < len; i++) {
+        result = hashTable[((unsigned char)result) ^ buffer[i]] ^ (result >> 8);
+    }
 
-	return result;
+    return result;
 }
