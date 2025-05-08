@@ -1,6 +1,6 @@
 // Source https://controllers.fandom.com/wiki/Sony_DualSense
 
-#pragma pack(1)
+#pragma pack(push, 1)
 enum class Direction : uint8_t {
 	North,
 	NorthEast,
