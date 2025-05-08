@@ -2,13 +2,6 @@
 # project specific logic here.
 #
 
-
-cmake_minimum_required(VERSION 3.16)
-
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
 file(GLOB_RECURSE MY_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp")
 
 add_executable ("${CMAKE_PROJECT_NAME}")
