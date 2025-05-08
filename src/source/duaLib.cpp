@@ -171,8 +171,7 @@ int readFunc() {
 			if (g_controllers[i].valid && g_controllers[i].opened) {
 				allInvalid = false;
 
-				if (g_controllers[i].deviceType == DUALSENSE &&
-					g_controllers[i].connectionType == HID_API_BUS_USB) {
+				if (g_controllers[i].deviceType == DUALSENSE && g_controllers[i].connectionType == HID_API_BUS_USB) {
 					ReportIn01USB  inputData = {};
 					ReportOut02    outputData = {};
 
@@ -270,39 +269,11 @@ int readFunc() {
 						g_controllers[i].currentInputState = inputData.State;
 					}
 				}
-				else if (g_controllers[i].deviceType == DUALSENSE &&
-						 g_controllers[i].connectionType == HID_API_BUS_BLUETOOTH) {
-					ReportIn31  inputData = {};
-					ReportOut31 outputData = {};
+				else if (g_controllers[i].deviceType == DUALSENSE && g_controllers[i].connectionType == HID_API_BUS_BLUETOOTH) {
 
-					outputData.Data.ReportID = 0x31;
-					outputData.Data.flag = 2;
-					outputData.Data.State = g_controllers[i].currentOutputState;
+					// Implement later
 
-					if (outputData.Data.State.LedRed != g_controllers[i].lastOutputState.LedRed ||
-						outputData.Data.State.LedGreen != g_controllers[i].lastOutputState.LedGreen ||
-						outputData.Data.State.LedBlue != g_controllers[i].lastOutputState.LedBlue) {
-						outputData.Data.State.AllowLedColor = true;
-					}
-
-					int res = hid_read(
-						g_controllers[i].handle,
-						reinterpret_cast<unsigned char*>(&inputData),
-						sizeof(inputData)
-					);
-					if (res == 0) {
-						continue;
-					}
-
-					if (!inputData.Data.State.StateData.ButtonMute &&
-						g_controllers[i].currentInputState.ButtonMute) {
-						g_controllers[i].isMicMuted = !g_controllers[i].isMicMuted;
-						outputData.Data.State.MuteLightMode = g_controllers[i].isMicMuted ? MuteLight::On : MuteLight::Off;
-						outputData.Data.State.MicMute = g_controllers[i].isMicMuted;
-						outputData.Data.State.AllowMuteLight = true;
-					}
-
-					uint32_t crc = compute(outputData.CRC.Buff, sizeof(outputData) - 4);
+					/*uint32_t crc = compute(outputData.CRC.Buff, sizeof(outputData) - 4);
 					outputData.CRC.CRC = crc;
 					if (compute(reinterpret_cast<uint8_t*>(&outputData.Data.State), sizeof(SetStateData)) !=
 						compute(reinterpret_cast<uint8_t*>(&g_controllers[i].lastOutputState), sizeof(SetStateData)) ||
@@ -314,9 +285,8 @@ int readFunc() {
 						);
 						g_controllers[i].lastOutputState = outputData.Data.State;
 						g_controllers[i].wasDisconnected = false;
-					}
+					}*/
 
-					g_controllers[i].currentInputState = inputData.Data.State.StateData;
 				}
 			}
 			else if (!g_controllers[i].valid && g_controllers[i].opened) {
