@@ -359,7 +359,7 @@ int watchFunc() {
 								g_controllers[i].id = id;
 								g_controllers[i].idSize = size;
 
-								auto dev = g_deviceList.devices[j].Device;
+								int dev = g_deviceList.devices[j].Device;
 								if (dev == DUALSENSE_DEVICE_ID)      g_controllers[i].deviceType = DUALSENSE;
 								else if (dev == DUALSHOCK4_DEVICE_ID \
 									  || dev == DUALSHOCK4V2_DEVICE_ID)  g_controllers[i].deviceType = DUALSHOCK4;
@@ -637,7 +637,7 @@ int main() {
 	}
 
 	//int handle = scePadOpen(1, NULL, NULL, NULL);
-	int handle = scePadOpen(1, NULL, NULL, NULL);
+	int handle = scePadOpen(1, 0, 0, 0);
 	//int handle2 = scePadOpen(2, NULL, NULL, NULL);
 
 	std::cout << handle << std::endl;
