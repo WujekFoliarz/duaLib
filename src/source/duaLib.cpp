@@ -132,7 +132,7 @@ struct controller {
 	hid_device* handle = 0;
 	int sceHandle = 0;
 	int8_t playerIndex = 0;
-	int8_t deviceType = -1;
+	int deviceType = -1;
 	uint8_t seqNo = 0;
 	std::mutex lock;
 	hid_bus_type connectionType = {};
