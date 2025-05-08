@@ -617,7 +617,7 @@ int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* contain
 		if (g_controllers[i].sceHandle == handle && g_controllers[i].id != "" && g_controllers[i].idSize != 0) {
 			s_ScePadContainerIdInfo info = {};
 			info.size = g_controllers[i].idSize;
-			strncpy(info.id, g_controllers[i].id, sizeof(info.id) - 1);
+			strncpy_s(info.id, g_controllers[i].id, sizeof(info.id) - 1);
 			info.id[sizeof(info.id) - 1] = '\0';
 			*containerIdInfo = info;
 			return 0;

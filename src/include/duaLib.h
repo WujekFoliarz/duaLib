@@ -8,6 +8,10 @@
 #include <cstdint>
 #include <vector>
 #include <algorithm>
+#include <atomic>      
+#include <thread>       
+#include <chrono>      
+#include <cstring>    
 
 #ifdef _WIN32
 	#include <Windows.h>
