@@ -45,10 +45,6 @@ jobs:
             c_compiler: cl
 
     steps:
-    - name: Clear build directory
-      run: rm -rf build
-      if: matrix.os == 'ubuntu-latest'
-    
     - uses: actions/checkout@v4
       with:
         submodules: true
