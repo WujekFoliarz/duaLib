@@ -325,9 +325,8 @@ int watchFunc() {
 
 					for (hid_device_info* info = head; info; info = info->next) {
 						hid_device* handle = hid_open_path(info->path);
-						hid_set_nonblocking(handle, 1);
-
 						if (!handle) continue;
+						hid_set_nonblocking(handle, 1);
 
 						std::string newMac;
 						if (getMacAddress(handle, newMac)) {
