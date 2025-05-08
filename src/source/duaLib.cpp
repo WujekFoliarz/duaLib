@@ -164,23 +164,32 @@ std::thread g_watchThread;
 int readFunc() {
 	while (g_threadRunning) {
 		bool allInvalid = true;
+
 		for (int i = 0; i < DEVICE_COUNT; i++) {
 			std::lock_guard<std::mutex> guard(g_controllers[i].lock);
 
 			if (g_controllers[i].valid && g_controllers[i].opened) {
 				allInvalid = false;
+
 			#pragma region Dualsense USB
-				if (g_controllers[i].deviceType == DUALSENSE && g_controllers[i].connectionType == HID_API_BUS_USB) {
-					ReportIn01USB inputData = {};
+				if (g_controllers[i].deviceType == DUALSENSE &&
+					g_controllers[i].connectionType == HID_API_BUS_USB) {
+					ReportIn01USB  inputData = {};
+					ReportOut02    outputData = {};
+
 					inputData.ReportID = 0x01;
-					ReportOut02 outputData = {};
 					outputData.ReportID = 0x02;
-
 					outputData.State = g_controllers[i].currentOutputState;
-					int res = hid_read(g_controllers[i].handle, reinterpret_cast<unsigned char*>(&inputData), sizeof(inputData));
 
-					if (g_controllers[i].failedReadCount >= 254)
+					int res = hid_read(
+						g_controllers[i].handle,
+						reinterpret_cast<unsigned char*>(&inputData),
+						sizeof(inputData)
+					);
+
+					if (g_controllers[i].failedReadCount >= 254) {
 						g_controllers[i].valid = false;
+					}
 
 					if (res == -1) {
 						g_controllers[i].failedReadCount++;
@@ -189,74 +198,68 @@ int readFunc() {
 					else if (res > 0) {
 						g_controllers[i].failedReadCount = 0;
 
-						if (outputData.State.LedRed != g_controllers[i].lastOutputState.LedRed || outputData.State.LedGreen != g_controllers[i].lastOutputState.LedGreen || outputData.State.LedBlue != g_controllers[i].lastOutputState.LedBlue)
+						if (outputData.State.LedRed != g_controllers[i].lastOutputState.LedRed ||
+							outputData.State.LedGreen != g_controllers[i].lastOutputState.LedGreen ||
+							outputData.State.LedBlue != g_controllers[i].lastOutputState.LedBlue) {
 							outputData.State.AllowLedColor = true;
+						}
 
 					#pragma region Player LED
-						if ((g_controllers[i].versionReport.HardwareInfo & 0x00FFFF00) < 0X00000400) {
-							switch (g_controllers[i].playerIndex) {
-								case 1:
-									outputData.State.PlayerLight1 = false; outputData.State.PlayerLight2 = false;
-									outputData.State.PlayerLight3 = true;
-									outputData.State.PlayerLight4 = false; outputData.State.PlayerLight5 = false;
-									break;
-								case 2:
-									outputData.State.PlayerLight1 = false; outputData.State.PlayerLight2 = true;
-									outputData.State.PlayerLight3 = false;
-									outputData.State.PlayerLight4 = true; outputData.State.PlayerLight5 = false;
-									break;
-								case 3:
-									outputData.State.PlayerLight1 = true; outputData.State.PlayerLight2 = false;
-									outputData.State.PlayerLight3 = true;
-									outputData.State.PlayerLight4 = false; outputData.State.PlayerLight5 = true;
-									break;
-								case 4:
-									outputData.State.PlayerLight1 = true; outputData.State.PlayerLight2 = true;
-									outputData.State.PlayerLight3 = false;
-									outputData.State.PlayerLight4 = true; outputData.State.PlayerLight5 = true;
-									break;
-							}
+						bool oldStyle =
+							((g_controllers[i].versionReport.HardwareInfo & 0x00FFFF00) < 0x00000400);
+						switch (g_controllers[i].playerIndex) {
+							case 1:
+								outputData.State.PlayerLight1 = false;
+								outputData.State.PlayerLight2 = false;
+								outputData.State.PlayerLight3 = true;
+								outputData.State.PlayerLight4 = false;
+								outputData.State.PlayerLight5 = false;
+								break;
+							case 2:
+								outputData.State.PlayerLight1 = false;
+								outputData.State.PlayerLight2 = oldStyle ? true : true;
+								outputData.State.PlayerLight3 = false;
+								outputData.State.PlayerLight4 = oldStyle ? true : false;
+								outputData.State.PlayerLight5 = false;
+								break;
+							case 3:
+								outputData.State.PlayerLight1 = true;
+								outputData.State.PlayerLight2 = oldStyle ? false : true;
+								outputData.State.PlayerLight3 = oldStyle ? true : false;
+								outputData.State.PlayerLight4 = false;
+								outputData.State.PlayerLight5 = oldStyle ? true : false;
+								break;
+							case 4:
+								outputData.State.PlayerLight1 = true;
+								outputData.State.PlayerLight2 = true;
+								outputData.State.PlayerLight3 = false;
+								outputData.State.PlayerLight4 = oldStyle ? true : false;
+								outputData.State.PlayerLight5 = oldStyle ? true : false;
+								break;
 						}
-						else {
-							switch (g_controllers[i].playerIndex) {
-								case 1:
-									outputData.State.PlayerLight1 = false; outputData.State.PlayerLight2 = false;
-									outputData.State.PlayerLight3 = true;
-									outputData.State.PlayerLight4 = false; outputData.State.PlayerLight5 = false;
-									break;
-								case 2:
-									outputData.State.PlayerLight1 = false; outputData.State.PlayerLight2 = true;
-									outputData.State.PlayerLight3 = false;
-									outputData.State.PlayerLight4 = false; outputData.State.PlayerLight5 = false;
-									break;
-								case 3:
-									outputData.State.PlayerLight1 = true; outputData.State.PlayerLight2 = true;
-									outputData.State.PlayerLight3 = false;
-									outputData.State.PlayerLight4 = false; outputData.State.PlayerLight5 = false;
-									break;
-								case 4:
-									outputData.State.PlayerLight1 = true; outputData.State.PlayerLight2 = true;
-									outputData.State.PlayerLight3 = false;
-									outputData.State.PlayerLight4 = false; outputData.State.PlayerLight5 = false;
-									break;
-							}
-						}
-						if (outputData.State.PlayerLight1 != g_controllers[i].lastOutputState.PlayerLight1
-						|| outputData.State.PlayerLight2 != g_controllers[i].lastOutputState.PlayerLight2
-						|| outputData.State.PlayerLight3 != g_controllers[i].lastOutputState.PlayerLight3
-						|| outputData.State.PlayerLight4 != g_controllers[i].lastOutputState.PlayerLight4)
+						if (outputData.State.PlayerLight1 != g_controllers[i].lastOutputState.PlayerLight1 ||
+							outputData.State.PlayerLight2 != g_controllers[i].lastOutputState.PlayerLight2 ||
+							outputData.State.PlayerLight3 != g_controllers[i].lastOutputState.PlayerLight3 ||
+							outputData.State.PlayerLight4 != g_controllers[i].lastOutputState.PlayerLight4) {
 							outputData.State.AllowPlayerIndicators = true;
+						}
 					#pragma endregion
 
 						if (!inputData.State.ButtonMute && g_controllers[i].currentInputState.ButtonMute) {
-							g_controllers[i].isMicMuted = g_controllers[i].isMicMuted ? false : true;
+							g_controllers[i].isMicMuted = !g_controllers[i].isMicMuted;
 							outputData.State.MuteLightMode = g_controllers[i].isMicMuted ? MuteLight::On : MuteLight::Off;
-							outputData.State.MicMute = g_controllers[i].isMicMuted ? true : false;
+							outputData.State.MicMute = g_controllers[i].isMicMuted;
 							outputData.State.AllowMuteLight = true;
 						}
 
-						if (compute(reinterpret_cast<uint8_t*>(&outputData.State), sizeof(SetStateData)) != compute(reinterpret_cast<uint8_t*>(&g_controllers[i].lastOutputState), sizeof(SetStateData)) || g_controllers[i].wasDisconnected) {
-							res = hid_write(g_controllers[i].handle, reinterpret_cast<unsigned char*>(&outputData), sizeof(ReportOut02));
+						if (compute(reinterpret_cast<uint8_t*>(&outputData.State), sizeof(SetStateData)) !=
+							compute(reinterpret_cast<uint8_t*>(&g_controllers[i].lastOutputState), sizeof(SetStateData)) ||
+							g_controllers[i].wasDisconnected) {
+							res = hid_write(
+								g_controllers[i].handle,
+								reinterpret_cast<unsigned char*>(&outputData),
+								sizeof(outputData)
+							);
 							if (res > 0) {
 								g_controllers[i].lastOutputState = outputData.State;
 								g_controllers[i].wasDisconnected = false;
@@ -269,34 +272,48 @@ int readFunc() {
 			#pragma endregion
 
 			#pragma region Dualsense BT
-				else if (g_controllers[i].deviceType == DUALSENSE && g_controllers[i].connectionType == HID_API_BUS_BLUETOOTH) {
-					ReportIn31 inputData = {};
+				else if (g_controllers[i].deviceType == DUALSENSE &&
+						 g_controllers[i].connectionType == HID_API_BUS_BLUETOOTH) {
+					ReportIn31  inputData = {};
 					ReportOut31 outputData = {};
 
-					outputData.Data.State = g_controllers[i].currentOutputState;
 					outputData.Data.ReportID = 0x31;
 					outputData.Data.flag = 2;
+					outputData.Data.State = g_controllers[i].currentOutputState;
 
-					if (outputData.Data.State.LedRed != g_controllers[i].lastOutputState.LedRed || outputData.Data.State.LedGreen != g_controllers[i].lastOutputState.LedGreen || outputData.Data.State.LedBlue != g_controllers[i].lastOutputState.LedBlue)
+					if (outputData.Data.State.LedRed != g_controllers[i].lastOutputState.LedRed ||
+						outputData.Data.State.LedGreen != g_controllers[i].lastOutputState.LedGreen ||
+						outputData.Data.State.LedBlue != g_controllers[i].lastOutputState.LedBlue) {
 						outputData.Data.State.AllowLedColor = true;
+					}
 
-					int res = hid_read(g_controllers[i].handle, reinterpret_cast<unsigned char*>(&inputData), sizeof(inputData));
-
-					if (res == 0)
+					int res = hid_read(
+						g_controllers[i].handle,
+						reinterpret_cast<unsigned char*>(&inputData),
+						sizeof(inputData)
+					);
+					if (res == 0) {
 						continue;
+					}
 
-					if (!inputData.Data.State.StateData.ButtonMute && g_controllers[i].currentInputState.ButtonMute) {
-						g_controllers[i].isMicMuted = g_controllers[i].isMicMuted ? false : true;
+					if (!inputData.Data.State.StateData.ButtonMute &&
+						g_controllers[i].currentInputState.ButtonMute) {
+						g_controllers[i].isMicMuted = !g_controllers[i].isMicMuted;
 						outputData.Data.State.MuteLightMode = g_controllers[i].isMicMuted ? MuteLight::On : MuteLight::Off;
-						outputData.Data.State.MicMute = g_controllers[i].isMicMuted ? true : false;
+						outputData.Data.State.MicMute = g_controllers[i].isMicMuted;
 						outputData.Data.State.AllowMuteLight = true;
 					}
 
 					uint32_t crc = compute(outputData.CRC.Buff, sizeof(outputData) - 4);
 					outputData.CRC.CRC = crc;
-
-					if (compute(reinterpret_cast<uint8_t*>(&outputData.Data.State), sizeof(SetStateData)) != compute(reinterpret_cast<uint8_t*>(&g_controllers[i].lastOutputState), sizeof(SetStateData)) || g_controllers[i].wasDisconnected) {
-						hid_write(g_controllers[i].handle, reinterpret_cast<unsigned char*>(&outputData), sizeof(outputData));
+					if (compute(reinterpret_cast<uint8_t*>(&outputData.Data.State), sizeof(SetStateData)) !=
+						compute(reinterpret_cast<uint8_t*>(&g_controllers[i].lastOutputState), sizeof(SetStateData)) ||
+						g_controllers[i].wasDisconnected) {
+						hid_write(
+							g_controllers[i].handle,
+							reinterpret_cast<unsigned char*>(&outputData),
+							sizeof(outputData)
+						);
 						g_controllers[i].lastOutputState = outputData.Data.State;
 						g_controllers[i].wasDisconnected = false;
 					}
@@ -304,22 +321,26 @@ int readFunc() {
 					g_controllers[i].currentInputState = inputData.Data.State.StateData;
 				}
 			#pragma endregion
+
 			}
 			else if (!g_controllers[i].valid && g_controllers[i].opened) {
 				g_controllers[i].lastPath = "";
 				g_controllers[i].macAddress = "";
 				g_controllers[i].wasDisconnected = true;
 			}
-		}
+		} 
 
-		if (allInvalid)
+		if (allInvalid) {
 			std::this_thread::sleep_for(std::chrono::seconds(1));
-		else
+		}
+		else {
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-	}
+		}
+	} 
 
 	return 0;
 }
+
 
 int watchFunc() {
 	while (g_threadRunning) {
@@ -582,15 +603,15 @@ int scePadReadState(int handle, void* data) {
 		#pragma endregion
 
 		#pragma region touchpad
-			state.touchData.touchNum = g_controllers[i].currentInputState.TouchData.Timestamp;
+			state.touchData.touchNum = g_controllers[i].currentInputState.touchData.Timestamp;
 
-			state.touchData.touch[0].id = g_controllers[i].currentInputState.TouchData.Finger[0].Index;
-			state.touchData.touch[0].x = g_controllers[i].currentInputState.TouchData.Finger[0].FingerX;
-			state.touchData.touch[0].y = g_controllers[i].currentInputState.TouchData.Finger[0].FingerY;
+			state.touchData.touch[0].id = g_controllers[i].currentInputState.touchData.Finger[0].Index;
+			state.touchData.touch[0].x = g_controllers[i].currentInputState.touchData.Finger[0].FingerX;
+			state.touchData.touch[0].y = g_controllers[i].currentInputState.touchData.Finger[0].FingerY;
 
-			state.touchData.touch[1].id = g_controllers[i].currentInputState.TouchData.Finger[1].Index;
-			state.touchData.touch[1].x = g_controllers[i].currentInputState.TouchData.Finger[1].FingerX;
-			state.touchData.touch[1].y = g_controllers[i].currentInputState.TouchData.Finger[1].FingerY;
+			state.touchData.touch[1].id = g_controllers[i].currentInputState.touchData.Finger[1].Index;
+			state.touchData.touch[1].x = g_controllers[i].currentInputState.touchData.Finger[1].FingerX;
+			state.touchData.touch[1].y = g_controllers[i].currentInputState.touchData.Finger[1].FingerY;
 		#pragma endregion
 
 		#pragma region misc

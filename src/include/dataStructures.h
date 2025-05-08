@@ -176,7 +176,7 @@ struct USBGetStateData { // 63
 	/*25  */ int16_t AccelerometerZ;
 	/*27  */ uint32_t SensorTimestamp;
 	/*31  */ int8_t Temperature; // reserved2 in Linux driver
-	/*32  */ TouchData TouchData;
+	/*32  */ TouchData touchData;
 	/*41.0*/ uint8_t TriggerRightStopLocation : 4; // trigger stop can be a range from 0 to 9 (F/9.0 for Apple interface)
 	/*41.4*/ uint8_t TriggerRightStatus : 4;
 	/*42.0*/ uint8_t TriggerLeftStopLocation : 4;
@@ -317,8 +317,8 @@ struct SetStateData { // 47
 	/*    */
 	/*40  */ uint8_t UNKBYTE; // previous notes suggested this was HLPF, was probably off by 1
 	/*    */
-	/*41  */ LightFadeAnimation LightFadeAnimation;
-	/*42  */ LightBrightness LightBrightness;
+	/*41  */ LightFadeAnimation lightFadeAnimation;
+	/*42  */ LightBrightness lightBrightness;
 	/*    */
 	/*    */ // PlayerIndicators
 	/*    */ // These bits control the white LEDs under the touch pad.
