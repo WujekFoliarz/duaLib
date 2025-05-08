@@ -611,6 +611,7 @@ int scePadReadState(int handle, void* data) {
 }
 
 int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* containerIdInfo) {
+#ifdef _WIN32
 	for (int i = 0; i < DEVICE_COUNT; i++) {
 		std::lock_guard<std::mutex> guard(g_controllers[i].lock);
 
@@ -631,6 +632,7 @@ int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* contain
 			return 0;
 		}
 	}
+#endif
 	return -1;
 }
 
