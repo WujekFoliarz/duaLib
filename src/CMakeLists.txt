@@ -25,4 +25,8 @@ target_link_libraries(${PROJECT_NAME}
     hidapi::hidapi
 )
 
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:hidapi> $<TARGET_FILE_DIR:${PROJECT_NAME}>
+)
+
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
