@@ -87,3 +87,10 @@ typedef struct {
 	uint8_t deviceUniqueData[12];
 
 } s_ScePadData;
+
+#pragma pack(push, 1) 
+struct s_ScePadContainerIdInfo {
+	DWORD size;
+	wchar_t id[0x2000];
+};
+#pragma pack(pop)

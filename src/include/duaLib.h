@@ -6,11 +6,21 @@
 #include <stdio.h>
 #include <wchar.h>
 #include <cstdint>
+#include <vector>
+#include <algorithm>
 
 #ifdef _WIN32
 	#include <Windows.h>
-	#include <timeapi.h>
+	#include <setupapi.h>
+	#pragma comment(lib, "setupapi.lib")
+	#pragma comment(lib, "hid.lib")
 	#pragma comment(lib, "winmm.lib")
+	#include <initguid.h>
+	#include <devpkey.h>
+	#include <hidsdi.h>
+#else
+	#include <clocale>
+	#include <cstdlib>
 #endif
 
 #include "dataStructures.h"

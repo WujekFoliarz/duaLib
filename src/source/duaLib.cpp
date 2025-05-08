@@ -47,6 +47,87 @@ bool isValid(hid_device* handle) {
 	return false;
 }
 
+#ifdef _WIN32
+static std::wstring Utf8ToWide(const char* utf8) {
+	int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, nullptr, 0);
+	if (wlen <= 0) return L"";
+	std::vector<wchar_t> buf(wlen);
+	MultiByteToWideChar(CP_UTF8, 0, utf8, -1, buf.data(), wlen);
+	return std::wstring(buf.data());
+}
+#endif
+
+bool GetID(const char* narrowPath, const char** ID, int* size) {
+#ifdef _WIN32
+	GUID hidGuid;
+	GUID outContainerId;
+	HidD_GetHidGuid(&hidGuid);
+
+	HDEVINFO devs = SetupDiGetClassDevs(
+		&hidGuid,
+		nullptr,
+		nullptr,
+		DIGCF_DEVICEINTERFACE | DIGCF_PRESENT
+	);
+	if (devs == INVALID_HANDLE_VALUE) {
+		return false;
+	}
+
+	SP_DEVICE_INTERFACE_DATA ifData = { sizeof(ifData) };
+	DWORD index = 0;
+	std::wstring targetPath = Utf8ToWide(narrowPath);
+	std::transform(targetPath.begin(), targetPath.end(), targetPath.begin(), ::tolower);
+
+	while (SetupDiEnumDeviceInterfaces(devs, nullptr, &hidGuid, index++, &ifData)) {
+		DWORD needed = 0;
+		SetupDiGetDeviceInterfaceDetailW(devs, &ifData, nullptr, 0, &needed, nullptr);
+		auto detailBuf = (SP_DEVICE_INTERFACE_DETAIL_DATA_W*)malloc(needed);
+		detailBuf->cbSize = sizeof(*detailBuf);
+		SP_DEVINFO_DATA devInfo = { sizeof(devInfo) };
+
+		if (SetupDiGetDeviceInterfaceDetailW(
+			devs, &ifData,
+			detailBuf, needed,
+			nullptr,
+			&devInfo
+			)) {
+			if (targetPath == detailBuf->DevicePath) {
+				DEVPROPTYPE propType = 0;
+				DWORD cb = sizeof(GUID);
+				if (SetupDiGetDevicePropertyW(
+					devs,
+					&devInfo,
+					&DEVPKEY_Device_ContainerId,
+					&propType,
+					reinterpret_cast<PBYTE>(&outContainerId),
+					cb,
+					&cb,
+					0
+					)) {
+					free(detailBuf);
+					SetupDiDestroyDeviceInfoList(devs);
+
+					wchar_t guidStr[39] = {};
+					StringFromGUID2(outContainerId, guidStr, _countof(guidStr));
+
+					*size = sizeof(guidStr);
+					static char buffer[39] = {};
+					std::wcstombs(buffer, guidStr, sizeof(buffer));
+					std::transform(buffer, buffer + std::strlen(buffer), buffer, [](unsigned char c) {return std::tolower(c); });
+					*ID = buffer;
+
+					return true;
+				}
+			}
+		}
+		free(detailBuf);
+	}
+
+	SetupDiDestroyDeviceInfoList(devs);
+	return false;
+#endif
+}
+
 struct controller {
 	hid_device* handle = 0;
 	int sceHandle = 0;
@@ -65,8 +146,11 @@ struct controller {
 	SetStateData lastOutputState = {};
 	SetStateData currentOutputState = {};
 	ReportFeatureInVersion versionReport = {};
-	std::string macAddress;
-	const char* lastPath;
+	std::string macAddress = "";
+	std::string systemIdentifier = "";
+	const char* lastPath = "";
+	const char* id = "";
+	int idSize = 0;
 };
 
 controller g_controllers[MAX_CONTROLLER_COUNT] = {};
@@ -85,7 +169,7 @@ int read() {
 
 			if (g_controllers[i].valid && g_controllers[i].opened) {
 				allInvalid = false;
-#pragma region Dualsense USB
+			#pragma region Dualsense USB
 				if (g_controllers[i].deviceType == DUALSENSE && g_controllers[i].connectionType == HID_API_BUS_USB) {
 					ReportIn01USB inputData = {};
 					inputData.ReportID = 0x01;
@@ -95,19 +179,20 @@ int read() {
 					outputData.State = g_controllers[i].currentOutputState;
 					int res = hid_read(g_controllers[i].handle, reinterpret_cast<unsigned char*>(&inputData), sizeof(inputData));
 
-					if (g_controllers[i].failedReadCount >= 254) 
-						g_controllers[i].valid = false;					
+					if (g_controllers[i].failedReadCount >= 254)
+						g_controllers[i].valid = false;
 
 					if (res == -1) {
 						g_controllers[i].failedReadCount++;
 						continue;
 					}
-					else if(res > 0) {
+					else if (res > 0) {
 						g_controllers[i].failedReadCount = 0;
 
 						if (outputData.State.LedRed != g_controllers[i].lastOutputState.LedRed || outputData.State.LedGreen != g_controllers[i].lastOutputState.LedGreen || outputData.State.LedBlue != g_controllers[i].lastOutputState.LedBlue)
 							outputData.State.AllowLedColor = true;
 
+					#pragma region Player LED
 						if ((g_controllers[i].versionReport.HardwareInfo & 0x00FFFF00) < 0X00000400) {
 							switch (g_controllers[i].playerIndex) {
 								case 1:
@@ -161,6 +246,7 @@ int read() {
 						|| outputData.State.PlayerLight3 != g_controllers[i].lastOutputState.PlayerLight3
 						|| outputData.State.PlayerLight4 != g_controllers[i].lastOutputState.PlayerLight4)
 							outputData.State.AllowPlayerIndicators = true;
+					#pragma endregion
 
 						if (!inputData.State.ButtonMute && g_controllers[i].currentInputState.ButtonMute) {
 							g_controllers[i].isMicMuted = g_controllers[i].isMicMuted ? false : true;
@@ -180,26 +266,26 @@ int read() {
 						g_controllers[i].currentInputState = inputData.State;
 					}
 				}
-#pragma endregion
-#pragma region Dualsense BT
+			#pragma endregion
+
+			#pragma region Dualsense BT
 				else if (g_controllers[i].deviceType == DUALSENSE && g_controllers[i].connectionType == HID_API_BUS_BLUETOOTH) {
 					ReportIn31 inputData = {};
 					ReportOut31 outputData = {};
-					
+
 					outputData.Data.State = g_controllers[i].currentOutputState;
 					outputData.Data.ReportID = 0x31;
 					outputData.Data.flag = 2;
 
-					if(outputData.Data.State.LedRed != g_controllers[i].lastOutputState.LedRed || outputData.Data.State.LedGreen != g_controllers[i].lastOutputState.LedGreen || outputData.Data.State.LedBlue != g_controllers[i].lastOutputState.LedBlue)
+					if (outputData.Data.State.LedRed != g_controllers[i].lastOutputState.LedRed || outputData.Data.State.LedGreen != g_controllers[i].lastOutputState.LedGreen || outputData.Data.State.LedBlue != g_controllers[i].lastOutputState.LedBlue)
 						outputData.Data.State.AllowLedColor = true;
-		
+
 					int res = hid_read(g_controllers[i].handle, reinterpret_cast<unsigned char*>(&inputData), sizeof(inputData));
 
 					if (res == 0)
 						continue;
 
-					if (!inputData.Data.State.StateData.ButtonMute && g_controllers[i].currentInputState.ButtonMute)
-					{
+					if (!inputData.Data.State.StateData.ButtonMute && g_controllers[i].currentInputState.ButtonMute) {
 						g_controllers[i].isMicMuted = g_controllers[i].isMicMuted ? false : true;
 						outputData.Data.State.MuteLightMode = g_controllers[i].isMicMuted ? MuteLight::On : MuteLight::Off;
 						outputData.Data.State.MicMute = g_controllers[i].isMicMuted ? true : false;
@@ -217,7 +303,7 @@ int read() {
 
 					g_controllers[i].currentInputState = inputData.Data.State.StateData;
 				}
-#pragma endregion
+			#pragma endregion
 			}
 			else if (!g_controllers[i].valid && g_controllers[i].opened) {
 				g_controllers[i].lastPath = "";
@@ -278,6 +364,13 @@ int watch() {
 								g_controllers[i].failedReadCount = 0;
 								g_controllers[i].lastPath = info->path;
 
+								const char* id = {};
+								int size = 0;
+								GetID(info->path, &id, &size);
+
+								g_controllers[i].id = id;
+								g_controllers[i].idSize = size;
+
 								auto dev = g_deviceList.devices[j].Device;
 								if (dev == DUALSENSE_DEVICE_ID)      g_controllers[i].deviceType = DUALSENSE;
 								else if (dev == DUALSHOCK4_DEVICE_ID \
@@ -285,7 +378,7 @@ int watch() {
 
 								getHardwareVersion(g_controllers[i].handle, g_controllers[i].versionReport);
 
-								if (info->bus_type == HID_API_BUS_USB) {
+								if (g_controllers[i].deviceType == DUALSENSE && info->bus_type == HID_API_BUS_USB) {
 									ReportOut02 report = {};
 									report.State.AllowLedColor = true;
 									report.State.AllowPlayerIndicators = true;
@@ -296,7 +389,7 @@ int watch() {
 										sizeof(report)
 									);
 								}
-								else {
+								else if (g_controllers[i].deviceType == DUALSENSE && info->bus_type == HID_API_BUS_BLUETOOTH) {
 									ReportOut31 report = {};
 
 									report.Data.ReportID = 0x31;
@@ -308,7 +401,7 @@ int watch() {
 									report.Data.State.AllowLedColor = true;
 									report.Data.State.ResetLights = true;
 
-									uint32_t crc = compute(report.CRC.Buff, sizeof(report)-4);
+									uint32_t crc = compute(report.CRC.Buff, sizeof(report) - 4);
 									report.CRC.CRC = crc;
 
 									int res = hid_write(
@@ -317,7 +410,7 @@ int watch() {
 										sizeof(report)
 									);
 								}
-							
+
 								break;
 							}
 
@@ -358,9 +451,9 @@ int watch() {
 int scePadInit() {
 	if (!g_initialized) {
 
-#ifdef _WIN32
+	#ifdef _WIN32
 		timeBeginPeriod(1);
-#endif
+	#endif
 
 		int res = hid_init();
 
@@ -428,10 +521,10 @@ int scePadReadState(int handle, void* data) {
 		std::lock_guard<std::mutex> guard(g_controllers[i].lock);
 
 		if (g_controllers[i].sceHandle == handle) {
-			
+
 			s_ScePadData state;
 
-#pragma region buttons
+		#pragma region buttons
 			uint32_t bitmaskButtons = {};
 			if (g_controllers[i].currentInputState.ButtonCross) bitmaskButtons |= 0x00004000;
 			if (g_controllers[i].currentInputState.ButtonCircle) bitmaskButtons |= 0x00002000;
@@ -442,15 +535,15 @@ int scePadReadState(int handle, void* data) {
 			if (g_controllers[i].currentInputState.ButtonL2) bitmaskButtons |= 0x00000100;
 			if (g_controllers[i].currentInputState.ButtonR1) bitmaskButtons |= 0x00000800;
 			if (g_controllers[i].currentInputState.ButtonR2) bitmaskButtons |= 0x00000200;
-			
+
 			if (g_controllers[i].currentInputState.ButtonL3) bitmaskButtons |= 0x00000002;
 			if (g_controllers[i].currentInputState.ButtonR3) bitmaskButtons |= 0x00000004;
-			
+
 			if (g_controllers[i].currentInputState.DPad == Direction::North) bitmaskButtons |= 0x00000010;
 			if (g_controllers[i].currentInputState.DPad == Direction::South) bitmaskButtons |= 0x00000040;
 			if (g_controllers[i].currentInputState.DPad == Direction::East) bitmaskButtons |= 0x00000020;
 			if (g_controllers[i].currentInputState.DPad == Direction::West) bitmaskButtons |= 0x00000080;
-			
+
 			if (g_controllers[i].currentInputState.ButtonOptions) bitmaskButtons |= 0x00000008;
 
 			if (g_controllers[i].currentInputState.ButtonPad) bitmaskButtons |= 0x00100000;
@@ -459,25 +552,25 @@ int scePadReadState(int handle, void* data) {
 				if (g_controllers[i].currentInputState.ButtonCreate) bitmaskButtons |= 0x00000001;
 				if (g_controllers[i].currentInputState.ButtonHome) bitmaskButtons |= 0x00010000;
 			}
-#pragma endregion
+		#pragma endregion
 
-#pragma region sticks
+		#pragma region sticks
 			state.LeftStick.X = g_controllers[i].currentInputState.LeftStickX;
 			state.LeftStick.Y = g_controllers[i].currentInputState.LeftStickY;
 			state.RightStick.Y = g_controllers[i].currentInputState.RightStickX;
 			state.RightStick.Y = g_controllers[i].currentInputState.RightStickY;
-#pragma endregion
+		#pragma endregion
 
-#pragma region triggers
+		#pragma region triggers
 			state.L2_Analog = g_controllers[i].currentInputState.TriggerLeft;
 			state.R2_Analog = g_controllers[i].currentInputState.TriggerRight;
-#pragma endregion
+		#pragma endregion
 
-#pragma region gyro
+		#pragma region gyro
 			state.orientation.w = 0; // what is orientation?
-			state.orientation.x = 0; 
-			state.orientation.y = 0; 
-			state.orientation.z = 0; 
+			state.orientation.x = 0;
+			state.orientation.y = 0;
+			state.orientation.z = 0;
 
 			state.acceleration.x = g_controllers[i].currentInputState.AccelerometerX;
 			state.acceleration.y = g_controllers[i].currentInputState.AccelerometerY;
@@ -486,9 +579,9 @@ int scePadReadState(int handle, void* data) {
 			state.angularVelocity.x = g_controllers[i].currentInputState.AngularVelocityX;
 			state.angularVelocity.y = g_controllers[i].currentInputState.AngularVelocityY;
 			state.angularVelocity.z = g_controllers[i].currentInputState.AngularVelocityZ;
-#pragma endregion
+		#pragma endregion
 
-#pragma region touchpad
+		#pragma region touchpad
 			state.touchData.touchNum = g_controllers[i].currentInputState.TouchData.Timestamp;
 
 			state.touchData.touch[0].id = g_controllers[i].currentInputState.TouchData.Finger[0].Index;
@@ -498,18 +591,43 @@ int scePadReadState(int handle, void* data) {
 			state.touchData.touch[1].id = g_controllers[i].currentInputState.TouchData.Finger[1].Index;
 			state.touchData.touch[1].x = g_controllers[i].currentInputState.TouchData.Finger[1].FingerX;
 			state.touchData.touch[1].y = g_controllers[i].currentInputState.TouchData.Finger[1].FingerY;
-#pragma endregion
-		
-#pragma region misc
+		#pragma endregion
+
+		#pragma region misc
 			state.connected = g_controllers[i].valid;
 			state.timestamp = g_controllers[i].currentInputState.DeviceTimeStamp;
 			state.extUnitData = {};
-			state.connectionCount = 0; 
+			state.connectionCount = 0;
 			for (int j = 0; j < 12; j++)
 				state.deviceUniqueData[j] = {};
 			state.deviceUniqueDataLen = sizeof(state.deviceUniqueData);
-#pragma endregion
+		#pragma endregion
+
 			std::memcpy(data, &state, sizeof(state));
+			return 0;
+		}
+	}
+	return -1;
+}
+
+int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* containerIdInfo) {
+	for (int i = 0; i < DEVICE_COUNT; i++) {
+		std::lock_guard<std::mutex> guard(g_controllers[i].lock);
+
+		if (g_controllers[i].sceHandle == handle && g_controllers[i].id != "" && g_controllers[i].idSize != 0) {
+			s_ScePadContainerIdInfo info = {};
+			info.size = g_controllers[i].idSize;
+
+		#ifdef _WIN32
+			wchar_t buffer[sizeof(info.id)];
+			MultiByteToWideChar(CP_UTF8, 0, g_controllers[i].id, -1, buffer, static_cast<int>(sizeof(info.id)));
+			std::memcpy(info.id, buffer, sizeof(info.id));
+		#else
+			std::setlocale(LC_ALL, "en_US.UTF-8");
+			std::mbstowcs(g_controllers[i].id, info.id, sizeof(info.id));
+		#endif
+			
+			*containerIdInfo = info;
 			return 0;
 		}
 	}
@@ -544,7 +662,6 @@ int main() {
 	s_SceLightBar l = {};
 	l.g = 255;
 	scePadSetLightBar(handle, &l);
-	
 	getchar();
 
 	return 0;
