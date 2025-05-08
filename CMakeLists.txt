@@ -17,3 +17,4 @@ project (duaLib)
 
 # Include sub-projects.
 add_subdirectory ("src")
+target_compile_features(duaLib PUBLIC cxx_std_20)
