@@ -291,7 +291,7 @@ int readFunc() {
 
 				}
 				else {
-					std::cout << "Fail - device type: " << (int32_t)g_controllers[i].deviceType << " connection type: " << (int32_t)g_controllers[i].connectionType << std::endl;
+					std::cout << "Fail - device type: " << (int32_t)g_controllers[i].deviceType << " connection type: " << g_controllers[i].connectionType << std::endl;
 				}
 			}
 			else if (!g_controllers[i].valid && g_controllers[i].opened) {
@@ -351,6 +351,7 @@ int watchFunc() {
 								g_controllers[i].handle = handle;
 								g_controllers[i].macAddress = newMac;
 								g_controllers[i].connectionType = info->bus_type;
+								std::cout << info->bus_type << std::endl;
 								g_controllers[i].valid = true;
 								g_controllers[i].failedReadCount = 0;
 								g_controllers[i].lastPath = info->path;
