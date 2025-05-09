@@ -135,7 +135,7 @@ struct controller {
 	uint8_t deviceType = UNKNOWN;
 	uint8_t seqNo = 0;
 	std::mutex lock;
-	hid_bus_type connectionType = {};
+	uint8_t connectionType = 0;
 	bool opened = false;
 	bool wasMicBtnClicked = false;
 	bool isMicMuted = false;
@@ -171,7 +171,7 @@ int readFunc() {
 			if (g_controllers[i].valid && g_controllers[i].opened) {
 				allInvalid = false;
 
-				if (g_controllers[i].deviceType == DUALSENSE && g_controllers[i].connectionType == HID_API_BUS_USB) {
+				if (g_controllers[i].deviceType == DUALSENSE && (g_controllers[i].connectionType == HID_API_BUS_USB || g_controllers[i].connectionType == HID_API_BUS_UNKNOWN)) {
 					ReportIn01USB  inputData = {};
 					ReportOut02    outputData = {};
 
