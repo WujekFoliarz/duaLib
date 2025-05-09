@@ -633,6 +633,20 @@ int scePadSetLightBar(int handle, s_SceLightBar* lightbar) {
 	return -1;
 }
 
+int scePadGetHandle(int userID, int, int) {
+	if (userID > DEVICE_COUNT + 1 || userID < 0)
+		return -1;
+
+	for (int i = 0; i < DEVICE_COUNT; i++) {
+		std::lock_guard<std::mutex> guard(g_controllers[i].lock);
+
+		if (g_controllers[i].playerIndex == userID) {
+			return g_controllers[i].sceHandle;
+		}
+	}
+	return -1;
+}
+
 int main() {
 	if (scePadInit() != SCE_OK) {
 		std::cout << "Failed to initalize!" << std::endl;
