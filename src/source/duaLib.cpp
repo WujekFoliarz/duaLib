@@ -290,6 +290,9 @@ int readFunc() {
 					}*/
 
 				}
+				else {
+					std::cout << "Fail - device type: " << g_controllers[i].deviceType << " connection type: " << g_controllers[i].connectionType << std::endl;
+				}
 			}
 			else if (!g_controllers[i].valid && g_controllers[i].opened) {
 				g_controllers[i].lastPath = "";
@@ -363,6 +366,8 @@ int watchFunc() {
 								
 								if (dev == DUALSENSE_DEVICE_ID) { g_controllers[i].deviceType = DUALSENSE; }							
 								else if (dev == DUALSHOCK4_DEVICE_ID || dev == DUALSHOCK4V2_DEVICE_ID) { g_controllers[i].deviceType = DUALSHOCK4; }
+
+
 
 								getHardwareVersion(g_controllers[i].handle, g_controllers[i].versionReport);
 
