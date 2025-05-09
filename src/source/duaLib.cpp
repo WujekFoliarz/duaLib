@@ -291,7 +291,7 @@ int readFunc() {
 
 				}
 				else {
-					std::cout << "Fail - device type: " << g_controllers[i].deviceType << " connection type: " << g_controllers[i].connectionType << std::endl;
+					std::cout << "Fail - device type: " << (int32_t)g_controllers[i].deviceType << " connection type: " << (int32_t)g_controllers[i].connectionType << std::endl;
 				}
 			}
 			else if (!g_controllers[i].valid && g_controllers[i].opened) {
