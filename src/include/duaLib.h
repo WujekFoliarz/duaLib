@@ -39,12 +39,13 @@
 #define DUALSENSE_DEVICE_ID 0x0ce6
 #define DUALSHOCK4_DEVICE_ID 0x05c4
 #define DUALSHOCK4V2_DEVICE_ID 0x09cc
-#define DUALSHOCK4 0
-#define DUALSENSE 1
+#define UNKNOWN 0
+#define DUALSHOCK4 1
+#define DUALSENSE 2
 
 struct device {
-	int Vendor = 0;
-	int Device = 0;
+	uint16_t Vendor = 0;
+	uint16_t Device = 0;
 };
 
 struct deviceList {

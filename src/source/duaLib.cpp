@@ -130,9 +130,9 @@ bool GetID(const char* narrowPath, const char** ID, int* size) {
 
 struct controller {
 	hid_device* handle = 0;
-	int sceHandle = 0;
-	int8_t playerIndex = 0;
-	int deviceType = -1;
+	uint16_t sceHandle = 0;
+	uint8_t playerIndex = 0;
+	uint8_t deviceType = UNKNOWN;
 	uint8_t seqNo = 0;
 	std::mutex lock;
 	hid_bus_type connectionType = {};
@@ -150,7 +150,7 @@ struct controller {
 	std::string systemIdentifier = "";
 	const char* lastPath = "";
 	const char* id = "";
-	int idSize = 0;
+	uint8_t idSize = 0;
 };
 
 controller g_controllers[MAX_CONTROLLER_COUNT] = {};
@@ -327,7 +327,7 @@ int watchFunc() {
 
 					for (hid_device_info* info = head; info; info = info->next) {
 						hid_device* handle = hid_open_path(info->path);
-
+					 	std::wcout << hid_error(handle) << std::endl;
 						if (!handle) continue;
 						hid_set_nonblocking(handle, 1);
 
@@ -353,16 +353,16 @@ int watchFunc() {
 								g_controllers[i].lastPath = info->path;
 
 								const char* id = {};
-								int size = 0;
-								GetID(info->path, &id, &size);
+								uint8_t size = 0;
+								GetID(info->path, &id, reinterpret_cast<int*>(&size));
 
 								g_controllers[i].id = id;
 								g_controllers[i].idSize = size;
 
-								int dev = g_deviceList.devices[j].Device;
-								if (dev == DUALSENSE_DEVICE_ID)      g_controllers[i].deviceType = DUALSENSE;
-								else if (dev == DUALSHOCK4_DEVICE_ID \
-									  || dev == DUALSHOCK4V2_DEVICE_ID)  g_controllers[i].deviceType = DUALSHOCK4;
+								uint16_t dev = g_deviceList.devices[j].Device;
+								
+								if (dev == DUALSENSE_DEVICE_ID) { g_controllers[i].deviceType = DUALSENSE; }							
+								else if (dev == DUALSHOCK4_DEVICE_ID || dev == DUALSHOCK4V2_DEVICE_ID) { g_controllers[i].deviceType = DUALSHOCK4; }
 
 								getHardwareVersion(g_controllers[i].handle, g_controllers[i].versionReport);
 
@@ -392,7 +392,7 @@ int watchFunc() {
 									uint32_t crc = compute(report.CRC.Buff, sizeof(report) - 4);
 									report.CRC.CRC = crc;
 
-									int res = hid_write(
+									uint8_t res = hid_write(
 										g_controllers[i].handle,
 										reinterpret_cast<unsigned char*>(&report),
 										sizeof(report)
