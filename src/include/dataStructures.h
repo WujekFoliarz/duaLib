@@ -351,7 +351,7 @@ struct SetStateData { // 47
 };
 
 struct ReportOut02 {
-	uint8_t ReportID = 0x02;
+	uint8_t ReportID; // 0x02
 	SetStateData State;
 };
 
@@ -370,7 +370,7 @@ struct ReportIn31 {
 	union {
 		BTCRC<78> CRC;
 		struct {
-			uint8_t ReportID = 0x31; // 0x31
+			uint8_t ReportID; // 0x31
 			uint8_t HasHID : 1; // Present for packets with state data
 			uint8_t HasMic : 1; // Looks mutually exclusive, possible mic data
 			uint8_t Unk1 : 2;
