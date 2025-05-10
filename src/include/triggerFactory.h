@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cstdint>
+#include <cstddef>
 
 /*
  * MIT License
