@@ -37,3 +37,8 @@ It aims to replicate the original library's behavior, possibly making it crosspl
 | int scePadSetVolumeGain(int handle, s_ScePadVolumeGain* gainSettings)                     |❌              |
 | int scePadIsSupportedAudioFunction(int handle)                                            |❌              |
 | int scePadTerminate(void)                                                                 |✅              |
+
+ ## Credits
+ https://gist.github.com/Nielk1/6d54cc2c00d2201ccb8c2720ad7538db
+ 
+ https://controllers.fandom.com/wiki/Sony_DualSense
