@@ -348,6 +348,25 @@ struct SetStateData { // 47
 	/*45  */ uint8_t LedGreen;
 	/*46  */ uint8_t LedBlue;
 	// Structure ends here though on BT there is padding and a CRC, see ReportOut31
+
+	bool operator==(const SetStateData& other) const {
+		return 
+			std::memcmp(RightTriggerFFB, other.RightTriggerFFB, 11) == 0 &&
+			std::memcmp(LeftTriggerFFB, other.LeftTriggerFFB, 11) == 0 &&
+			LedRed == other.LedRed &&
+			LedGreen == other.LedGreen &&
+			LedBlue == other.LedBlue &&
+			PlayerLight1 == other.PlayerLight1 &&
+			PlayerLight2 == other.PlayerLight2 &&
+			PlayerLight3 == other.PlayerLight3 &&
+			PlayerLight4 == other.PlayerLight4 &&
+			PlayerLight5 == other.PlayerLight5 &&
+			MuteLightMode == other.MuteLightMode;
+	}
+
+	bool operator!=(const SetStateData& other) const {
+		return !(*this == other);
+	}
 };
 
 struct ReportOut02 {

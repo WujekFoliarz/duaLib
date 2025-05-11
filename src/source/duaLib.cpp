@@ -1,237 +1,226 @@
 ﻿#include "duaLib.h"
 
-bool letGo(hid_device* handle, uint8_t deviceType, uint8_t connectionType) {
-	if (handle && deviceType == DUALSENSE && (connectionType == HID_API_BUS_USB || HID_API_BUS_UNKNOWN)) {
-		ReportOut02 data = {};
-		data.ReportID = 0x02;
+namespace duaLibUtils {
+	bool letGo(hid_device* handle, uint8_t deviceType, uint8_t connectionType) {
+		if (handle && deviceType == DUALSENSE && (connectionType == HID_API_BUS_USB || connectionType == HID_API_BUS_UNKNOWN)) {
+			ReportOut02 data = {};
+			data.ReportID = 0x02;
 
-		data.State.ResetLights = true;
-		data.State.AllowLedColor = false;
-		data.State.AllowAudioControl = false;
-		data.State.AllowAudioControl2 = false;
-		data.State.AllowAudioMute = false;
-		data.State.AllowColorLightFadeAnimation = false;
-		data.State.AllowHapticLowPassFilter = false;
-		data.State.AllowHeadphoneVolume = false;
-		data.State.AllowLightBrightnessChange = false;
-		data.State.AllowMicVolume = false;
-		data.State.AllowMotorPowerLevel = false;
-		data.State.AllowMuteLight = false;
-		data.State.AllowPlayerIndicators = false;
-		data.State.AllowSpeakerVolume = false;
-		data.State.UseRumbleNotHaptics = false;
-		data.State.RumbleEmulationLeft = 0;
-		data.State.RumbleEmulationRight = 0;
+			data.State.ResetLights = true;
+			data.State.AllowLedColor = false;
+			data.State.AllowAudioControl = false;
+			data.State.AllowAudioControl2 = false;
+			data.State.AllowAudioMute = false;
+			data.State.AllowColorLightFadeAnimation = false;
+			data.State.AllowHapticLowPassFilter = false;
+			data.State.AllowHeadphoneVolume = false;
+			data.State.AllowLightBrightnessChange = false;
+			data.State.AllowMicVolume = false;
+			data.State.AllowMotorPowerLevel = false;
+			data.State.AllowMuteLight = false;
+			data.State.AllowPlayerIndicators = false;
+			data.State.AllowSpeakerVolume = false;
+			data.State.UseRumbleNotHaptics = false;
+			data.State.RumbleEmulationLeft = 0;
+			data.State.RumbleEmulationRight = 0;
 
-		data.State.AllowLeftTriggerFFB = true;
-		data.State.AllowRightTriggerFFB = true;
-		TriggerEffectGenerator::Off(data.State.LeftTriggerFFB, 0);
-		TriggerEffectGenerator::Off(data.State.RightTriggerFFB, 0);
+			data.State.AllowLeftTriggerFFB = true;
+			data.State.AllowRightTriggerFFB = true;
+			TriggerEffectGenerator::Off(data.State.LeftTriggerFFB, 0);
+			TriggerEffectGenerator::Off(data.State.RightTriggerFFB, 0);
 
-		uint8_t res = hid_write(handle, reinterpret_cast<unsigned char*>(&data), sizeof(data));
-		return true;
-	}
-	else if (handle && deviceType == DUALSENSE && connectionType == HID_API_BUS_BLUETOOTH) {
-		ReportOut31 data = {};
-		data.Data.ReportID = 0x31;
-		data.Data.flag = 2;
+			uint8_t res = hid_write(handle, reinterpret_cast<unsigned char*>(&data), sizeof(data));
+			return true;
+		}
+		else if (handle && deviceType == DUALSENSE && connectionType == HID_API_BUS_BLUETOOTH) {
+			ReportOut31 data = {};
 
-		data.Data.State.ResetLights = false;
-		data.Data.State.AllowLedColor = true;
-		data.Data.State.LedBlue = 255;
-		data.Data.State.AllowAudioControl = false;
-		data.Data.State.AllowAudioControl2 = false;
-		data.Data.State.AllowAudioMute = false;
-		data.Data.State.AllowColorLightFadeAnimation = false;
-		data.Data.State.AllowHapticLowPassFilter = false;
-		data.Data.State.AllowHeadphoneVolume = false;
-		data.Data.State.AllowLightBrightnessChange = false;
-		data.Data.State.AllowMicVolume = false;
-		data.Data.State.AllowMotorPowerLevel = false;
-		data.Data.State.AllowMuteLight = false;
-		data.Data.State.AllowPlayerIndicators = false;
-		data.Data.State.AllowSpeakerVolume = false;
-		data.Data.State.UseRumbleNotHaptics = false;
-		data.Data.State.RumbleEmulationLeft = 0;
-		data.Data.State.RumbleEmulationRight = 0;
+			data.Data.ReportID = 0x31;
+			data.Data.flag = 2;
+			data.Data.State.ResetLights = true;	
+			uint32_t crc = compute(data.CRC.Buff, sizeof(data) - 4);
+			data.CRC.CRC = crc;
+			uint8_t res = hid_write(handle, reinterpret_cast<unsigned char*>(&data), sizeof(data));
 
-		data.Data.State.AllowLeftTriggerFFB = true;
-		data.Data.State.AllowRightTriggerFFB = true;
-		TriggerEffectGenerator::Off(data.Data.State.LeftTriggerFFB, 0);
-		TriggerEffectGenerator::Off(data.Data.State.RightTriggerFFB, 0);
+			data.Data.State.ResetLights = false;
+			data.Data.State.AllowLedColor = true;
+			data.Data.State.AllowLeftTriggerFFB = true;
+			data.Data.State.AllowRightTriggerFFB = true;
+			data.Data.State.LedBlue = 255;
+			TriggerEffectGenerator::Off(data.Data.State.LeftTriggerFFB, 0);
+			TriggerEffectGenerator::Off(data.Data.State.RightTriggerFFB, 0);
+			crc = compute(data.CRC.Buff, sizeof(data) - 4);
+			data.CRC.CRC = crc;
+			res = hid_write(handle, reinterpret_cast<unsigned char*>(&data), sizeof(data));
 
-		uint32_t crc = compute(data.CRC.Buff, sizeof(data) - 4);
-		data.CRC.CRC = crc;
+			return true;
+		}
 
-		uint8_t res = hid_write(handle, reinterpret_cast<unsigned char*>(&data), sizeof(data));
-
-		return true;
-	}
-
-	return false;
-}
-
-bool getHardwareVersion(hid_device* handle, ReportFeatureInVersion& report) {
-	if (!handle) return false;
-
-	unsigned char buffer[64] = { };
-	buffer[0] = 0x20;
-	int res = hid_get_feature_report(handle, buffer, sizeof(buffer));
-
-	if (res > 0) {
-		const auto versionReport = *reinterpret_cast<ReportFeatureInVersion*>(buffer);
-		report = versionReport;
-		return true;
-	}
-
-	return false;
-}
-
-bool getMacAddress(hid_device* handle, std::string& outMac) {
-	if (!handle) return false;
-
-	unsigned char buffer[20] = {};
-	buffer[0] = 0x09; // Report ID
-	int res = hid_get_feature_report(handle, buffer, sizeof(buffer));
-
-	if (res > 0) {
-		const auto macReport = *reinterpret_cast<ReportFeatureInMacAll*>(buffer);
-		char tmp[18];
-		snprintf(tmp, sizeof(tmp), "%02X:%02X:%02X:%02X:%02X:%02X",
-				 macReport.ClientMac[5], macReport.ClientMac[4], macReport.ClientMac[3],
-				 macReport.ClientMac[2], macReport.ClientMac[1], macReport.ClientMac[0]);
-		outMac = tmp;
-		return true;
-	}
-	return false;
-}
-
-bool isValid(hid_device* handle) {
-	if (!handle) return false;
-
-	std::string address;
-	bool res = getMacAddress(handle, address);
-	if (res) {
-		return true;
-	}
-
-	return false;
-}
-
-#ifdef _WIN32
-static std::wstring Utf8ToWide(const char* utf8) {
-	int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, nullptr, 0);
-	if (wlen <= 0) return L"";
-	std::vector<wchar_t> buf(wlen);
-	MultiByteToWideChar(CP_UTF8, 0, utf8, -1, buf.data(), wlen);
-	return std::wstring(buf.data());
-}
-#endif
-
-bool GetID(const char* narrowPath, const char** ID, int* size) {
-#ifdef _WIN32
-	GUID hidGuid;
-	GUID outContainerId;
-	HidD_GetHidGuid(&hidGuid);
-
-	HDEVINFO devs = SetupDiGetClassDevs(
-		&hidGuid,
-		nullptr,
-		nullptr,
-		DIGCF_DEVICEINTERFACE | DIGCF_PRESENT
-	);
-	if (devs == INVALID_HANDLE_VALUE) {
 		return false;
 	}
 
-	SP_DEVICE_INTERFACE_DATA ifData = { sizeof(ifData) };
-	DWORD index = 0;
-	std::wstring targetPath = Utf8ToWide(narrowPath);
-	std::transform(targetPath.begin(), targetPath.end(), targetPath.begin(), ::tolower);
+	bool getHardwareVersion(hid_device* handle, ReportFeatureInVersion& report) {
+		if (!handle) return false;
 
-	while (SetupDiEnumDeviceInterfaces(devs, nullptr, &hidGuid, index++, &ifData)) {
-		DWORD needed = 0;
-		SetupDiGetDeviceInterfaceDetailW(devs, &ifData, nullptr, 0, &needed, nullptr);
-		auto detailBuf = (SP_DEVICE_INTERFACE_DETAIL_DATA_W*)malloc(needed);
-		detailBuf->cbSize = sizeof(*detailBuf);
-		SP_DEVINFO_DATA devInfo = { sizeof(devInfo) };
+		unsigned char buffer[64] = { };
+		buffer[0] = 0x20;
+		int res = hid_get_feature_report(handle, buffer, sizeof(buffer));
 
-		if (SetupDiGetDeviceInterfaceDetailW(
-			devs, &ifData,
-			detailBuf, needed,
-			nullptr,
-			&devInfo
-			)) {
-			if (targetPath == detailBuf->DevicePath) {
-				DEVPROPTYPE propType = 0;
-				DWORD cb = sizeof(GUID);
-				if (SetupDiGetDevicePropertyW(
-					devs,
-					&devInfo,
-					&DEVPKEY_Device_ContainerId,
-					&propType,
-					reinterpret_cast<PBYTE>(&outContainerId),
-					cb,
-					&cb,
-					0
-					)) {
-					free(detailBuf);
-					SetupDiDestroyDeviceInfoList(devs);
-
-					wchar_t guidStr[39] = {};
-					StringFromGUID2(outContainerId, guidStr, _countof(guidStr));
-
-					*size = sizeof(guidStr);
-					static char buffer[39] = {};
-					std::wcstombs(buffer, guidStr, sizeof(buffer));
-					std::transform(buffer, buffer + std::strlen(buffer), buffer, [](unsigned char c) {return std::tolower(c); });
-					*ID = buffer;
-
-					return true;
-				}
-			}
+		if (res > 0) {
+			const auto versionReport = *reinterpret_cast<ReportFeatureInVersion*>(buffer);
+			report = versionReport;
+			return true;
 		}
-		free(detailBuf);
+
+		return false;
 	}
 
-	SetupDiDestroyDeviceInfoList(devs);
+	bool getMacAddress(hid_device* handle, std::string& outMac) {
+		if (!handle) return false;
+
+		unsigned char buffer[20] = {};
+		buffer[0] = 0x09; // Report ID
+		int res = hid_get_feature_report(handle, buffer, sizeof(buffer));
+
+		if (res > 0) {
+			const auto macReport = *reinterpret_cast<ReportFeatureInMacAll*>(buffer);
+			char tmp[18];
+			snprintf(tmp, sizeof(tmp), "%02X:%02X:%02X:%02X:%02X:%02X",
+					 macReport.ClientMac[5], macReport.ClientMac[4], macReport.ClientMac[3],
+					 macReport.ClientMac[2], macReport.ClientMac[1], macReport.ClientMac[0]);
+			outMac = tmp;
+			return true;
+		}
+		return false;
+	}
+
+	bool isValid(hid_device* handle) {
+		if (!handle) return false;
+
+		std::string address;
+		bool res = getMacAddress(handle, address);
+		if (res) {
+			return true;
+		}
+
+		return false;
+	}
+
+#ifdef _WIN32
+	static std::wstring Utf8ToWide(const char* utf8) {
+		int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, nullptr, 0);
+		if (wlen <= 0) return L"";
+		std::vector<wchar_t> buf(wlen);
+		MultiByteToWideChar(CP_UTF8, 0, utf8, -1, buf.data(), wlen);
+		return std::wstring(buf.data());
+	}
 #endif
-	return false;
+
+	bool GetID(const char* narrowPath, const char** ID, int* size) {
+	#ifdef _WIN32
+		GUID hidGuid;
+		GUID outContainerId;
+		HidD_GetHidGuid(&hidGuid);
+
+		HDEVINFO devs = SetupDiGetClassDevs(
+			&hidGuid,
+			nullptr,
+			nullptr,
+			DIGCF_DEVICEINTERFACE | DIGCF_PRESENT
+		);
+		if (devs == INVALID_HANDLE_VALUE) {
+			return false;
+		}
+
+		SP_DEVICE_INTERFACE_DATA ifData = { sizeof(ifData) };
+		DWORD index = 0;
+		std::wstring targetPath = Utf8ToWide(narrowPath);
+		std::transform(targetPath.begin(), targetPath.end(), targetPath.begin(), ::tolower);
+
+		while (SetupDiEnumDeviceInterfaces(devs, nullptr, &hidGuid, index++, &ifData)) {
+			DWORD needed = 0;
+			SetupDiGetDeviceInterfaceDetailW(devs, &ifData, nullptr, 0, &needed, nullptr);
+			auto detailBuf = (SP_DEVICE_INTERFACE_DETAIL_DATA_W*)malloc(needed);
+			detailBuf->cbSize = sizeof(*detailBuf);
+			SP_DEVINFO_DATA devInfo = { sizeof(devInfo) };
+
+			if (SetupDiGetDeviceInterfaceDetailW(
+				devs, &ifData,
+				detailBuf, needed,
+				nullptr,
+				&devInfo
+				)) {
+				if (targetPath == detailBuf->DevicePath) {
+					DEVPROPTYPE propType = 0;
+					DWORD cb = sizeof(GUID);
+					if (SetupDiGetDevicePropertyW(
+						devs,
+						&devInfo,
+						&DEVPKEY_Device_ContainerId,
+						&propType,
+						reinterpret_cast<PBYTE>(&outContainerId),
+						cb,
+						&cb,
+						0
+						)) {
+						free(detailBuf);
+						SetupDiDestroyDeviceInfoList(devs);
+
+						wchar_t guidStr[39] = {};
+						StringFromGUID2(outContainerId, guidStr, _countof(guidStr));
+
+						*size = sizeof(guidStr);
+						static char buffer[39] = {};
+						std::wcstombs(buffer, guidStr, sizeof(buffer));
+						std::transform(buffer, buffer + std::strlen(buffer), buffer, [](unsigned char c) {return std::tolower(c); });
+						*ID = buffer;
+
+						return true;
+					}
+				}
+			}
+			free(detailBuf);
+		}
+
+		SetupDiDestroyDeviceInfoList(devs);
+	#endif
+		return false;
+	}
+
+	struct trigger {
+		uint8_t force[11] = {};
+	};
+
+	struct controller {
+		hid_device* handle = 0;
+		uint16_t sceHandle = 0;
+		uint8_t playerIndex = 0;
+		uint8_t deviceType = UNKNOWN;
+		uint8_t seqNo = 0;
+		std::mutex lock;
+		uint8_t connectionType = 0;
+		bool opened = false;
+		bool wasMicBtnClicked = false;
+		bool isMicMuted = false;
+		bool wasDisconnected = false;
+		bool valid = true;
+		uint8_t failedReadCount = 0;
+		USBGetStateData currentInputState = {};
+		SetStateData lastOutputState = {};
+		SetStateData currentOutputState = {};
+		ReportFeatureInVersion versionReport = {};
+		std::string macAddress = "";
+		std::string systemIdentifier = "";
+		const char* lastPath = "";
+		const char* id = "";
+		uint16_t idSize = 0;
+		trigger L2 = {};
+		trigger R2 = {};
+		uint8_t triggerMask = 0;
+	};
 }
 
-struct trigger {
-	uint8_t force[11] = {};
-};
-
-struct controller {
-	hid_device* handle = 0;
-	uint16_t sceHandle = 0;
-	uint8_t playerIndex = 0;
-	uint8_t deviceType = UNKNOWN;
-	uint8_t seqNo = 0;
-	std::mutex lock;
-	uint8_t connectionType = 0;
-	bool opened = false;
-	bool wasMicBtnClicked = false;
-	bool isMicMuted = false;
-	bool wasDisconnected = false;
-	bool valid = true;
-	uint8_t failedReadCount = 0;
-	USBGetStateData currentInputState = {};
-	SetStateData lastOutputState = {};
-	SetStateData currentOutputState = {};
-	ReportFeatureInVersion versionReport = {};
-	std::string macAddress = "";
-	std::string systemIdentifier = "";
-	const char* lastPath = "";
-	const char* id = "";
-	uint16_t idSize = 0;
-	trigger L2 = {};
-	trigger R2 = {};
-	uint8_t triggerMask = 0;
-};
-
-controller g_controllers[MAX_CONTROLLER_COUNT] = {};
+duaLibUtils::controller g_controllers[MAX_CONTROLLER_COUNT] = {};
 std::atomic<bool> g_threadRunning = false;
 std::atomic<bool> g_initialized = false;
 std::atomic<bool> g_particularMode = false;
@@ -245,149 +234,170 @@ int readFunc() {
 		for (auto& controller : g_controllers) {
 			std::lock_guard<std::mutex> guard(controller.lock);
 
-			if (controller.valid && controller.opened) {
+			if (controller.valid && controller.opened && controller.deviceType == DUALSENSE) {
 				allInvalid = false;
+				bool isBt = controller.connectionType == HID_API_BUS_BLUETOOTH ? true : false;
 
-				if (controller.deviceType == DUALSENSE && (controller.connectionType == HID_API_BUS_USB || controller.connectionType == HID_API_BUS_UNKNOWN)) {
-					ReportIn01USB  inputData = {};
-					ReportOut02    outputData = {};
+				ReportIn01USB  inputUsb = {};
+				ReportIn31  inputBt = {};
+				inputUsb.ReportID = 0x01;
+				inputBt.Data.ReportID = 0x31;
+			
+				int32_t res = -1;
 
-					inputData.ReportID = 0x01;
-					outputData.ReportID = 0x02;
-					outputData.State = controller.currentOutputState;
-
-					int res = hid_read(
-						controller.handle,
-						reinterpret_cast<unsigned char*>(&inputData),
-						sizeof(inputData)
-					);
-
-					if (controller.failedReadCount >= 254) {
-						controller.valid = false;
-					}
-
-					if (res == -1) {
-						controller.failedReadCount++;
-						continue;
-					}
-					else if (res > 0) {
-						controller.failedReadCount = 0;
-
-						if (outputData.State.LedRed != controller.lastOutputState.LedRed ||
-							outputData.State.LedGreen != controller.lastOutputState.LedGreen ||
-							outputData.State.LedBlue != controller.lastOutputState.LedBlue ||
-							controller.wasDisconnected) {
-							outputData.State.AllowLedColor = true;
-						}
-
-						bool oldStyle =
-							((controller.versionReport.HardwareInfo & 0x00FFFF00) < 0x00000400);
-						switch (controller.playerIndex) {
-							case 1:
-								outputData.State.PlayerLight1 = false;
-								outputData.State.PlayerLight2 = false;
-								outputData.State.PlayerLight3 = true;
-								outputData.State.PlayerLight4 = false;
-								outputData.State.PlayerLight5 = false;
-								break;
-
-							case 2:
-								outputData.State.PlayerLight1 = false;
-								outputData.State.PlayerLight2 = oldStyle ? true : true;
-								outputData.State.PlayerLight3 = false;
-								outputData.State.PlayerLight4 = oldStyle ? true : false;
-								outputData.State.PlayerLight5 = false;
-								break;
-
-							case 3:
-								outputData.State.PlayerLight1 = true;
-								outputData.State.PlayerLight2 = oldStyle ? false : true;
-								outputData.State.PlayerLight3 = oldStyle ? true : false;
-								outputData.State.PlayerLight4 = false;
-								outputData.State.PlayerLight5 = oldStyle ? true : false;
-								break;
-
-							case 4:
-								outputData.State.PlayerLight1 = true;
-								outputData.State.PlayerLight2 = true;
-								outputData.State.PlayerLight3 = false;
-								outputData.State.PlayerLight4 = oldStyle ? true : false;
-								outputData.State.PlayerLight5 = oldStyle ? true : false;
-								break;
-						}
-
-						if (outputData.State.PlayerLight1 != controller.lastOutputState.PlayerLight1 ||
-							outputData.State.PlayerLight2 != controller.lastOutputState.PlayerLight2 ||
-							outputData.State.PlayerLight3 != controller.lastOutputState.PlayerLight3 ||
-							outputData.State.PlayerLight4 != controller.lastOutputState.PlayerLight4 ||
-							controller.wasDisconnected) {
-							outputData.State.AllowPlayerIndicators = true;
-						}
-
-						if (!inputData.State.ButtonMute && controller.currentInputState.ButtonMute) {
-							controller.isMicMuted = !controller.isMicMuted;
-							outputData.State.MuteLightMode = controller.isMicMuted ? MuteLight::On : MuteLight::Off;
-							outputData.State.MicMute = controller.isMicMuted;
-							outputData.State.AllowMuteLight = true;
-						}
-
-						// restore mute light
-						if (controller.wasDisconnected) {
-							outputData.State.MicMute = controller.isMicMuted;
-							outputData.State.AllowMuteLight = true;
-						}
-
-						if (controller.triggerMask & SCE_PAD_TRIGGER_EFFECT_TRIGGER_MASK_L2 || controller.wasDisconnected) {
-							outputData.State.AllowLeftTriggerFFB = true;
-							for (int i = 0; i < 11; i++) {
-								outputData.State.LeftTriggerFFB[i] = controller.L2.force[i];
-							}
-						}
-						
-						if (controller.triggerMask & SCE_PAD_TRIGGER_EFFECT_TRIGGER_MASK_R2 || controller.wasDisconnected) {
-							outputData.State.AllowRightTriggerFFB = true;
-							for (int i = 0; i < 11; i++) {
-								outputData.State.RightTriggerFFB[i] = controller.R2.force[i];
-							}
-						}
-
-						controller.triggerMask = 0;
-
-						if (compute(reinterpret_cast<uint8_t*>(&outputData.State), sizeof(SetStateData)) !=
-							compute(reinterpret_cast<uint8_t*>(&controller.lastOutputState), sizeof(SetStateData)) ||
-							controller.wasDisconnected) {
-							res = hid_write(
-								controller.handle,
-								reinterpret_cast<unsigned char*>(&outputData),
-								sizeof(outputData)
-							);
-							if (res > 0) {
-								controller.lastOutputState = outputData.State;
-								controller.wasDisconnected = false;
-							}
-						}
-
-						controller.currentInputState = inputData.State;
-					}
+				if (isBt) {
+					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt));
 				}
-				else if (controller.deviceType == DUALSENSE && controller.connectionType == HID_API_BUS_BLUETOOTH) {
+				else {
+					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb));
+				}
 
-					// Implement later
+				USBGetStateData inputData = isBt ? inputBt.Data.State.StateData : inputUsb.State;
 
-					/*uint32_t crc = compute(outputData.CRC.Buff, sizeof(outputData) - 4);
-					outputData.CRC.CRC = crc;
-					if (compute(reinterpret_cast<uint8_t*>(&outputData.Data.State), sizeof(SetStateData)) !=
-						compute(reinterpret_cast<uint8_t*>(&controller.lastOutputState), sizeof(SetStateData)) ||
+				if (controller.failedReadCount >= 254) {
+					controller.valid = false;
+				}
+
+				if (res == -1) {
+					controller.failedReadCount++;
+					continue;
+				}
+				else if (res > 0) {
+					controller.failedReadCount = 0;
+
+					if (controller.currentOutputState.LedRed != controller.lastOutputState.LedRed ||
+						controller.currentOutputState.LedGreen != controller.lastOutputState.LedGreen ||
+						controller.currentOutputState.LedBlue != controller.lastOutputState.LedBlue ||
 						controller.wasDisconnected) {
-						hid_write(
-							controller.handle,
-							reinterpret_cast<unsigned char*>(&outputData),
-							sizeof(outputData)
-						);
-						controller.lastOutputState = outputData.Data.State;
-						controller.wasDisconnected = false;
-					}*/
+						controller.currentOutputState.AllowLedColor = true;
+					}
+					else {
+						controller.currentOutputState.AllowLedColor = false;
+					}
 
+					bool oldStyle = ((controller.versionReport.HardwareInfo & 0x00FFFF00) < 0x00000400);
+					switch (controller.playerIndex) {
+						case 1:
+							controller.currentOutputState.PlayerLight1 = false;
+							controller.currentOutputState.PlayerLight2 = false;
+							controller.currentOutputState.PlayerLight3 = true;
+							controller.currentOutputState.PlayerLight4 = false;
+							controller.currentOutputState.PlayerLight5 = false;
+							break;
+
+						case 2:
+							controller.currentOutputState.PlayerLight1 = false;
+							controller.currentOutputState.PlayerLight2 = oldStyle ? true : true;
+							controller.currentOutputState.PlayerLight3 = false;
+							controller.currentOutputState.PlayerLight4 = oldStyle ? true : false;
+							controller.currentOutputState.PlayerLight5 = false;
+							break;
+
+						case 3:
+							controller.currentOutputState.PlayerLight1 = true;
+							controller.currentOutputState.PlayerLight2 = oldStyle ? false : true;
+							controller.currentOutputState.PlayerLight3 = oldStyle ? true : false;
+							controller.currentOutputState.PlayerLight4 = false;
+							controller.currentOutputState.PlayerLight5 = oldStyle ? true : false;
+							break;
+
+						case 4:
+							controller.currentOutputState.PlayerLight1 = true;
+							controller.currentOutputState.PlayerLight2 = true;
+							controller.currentOutputState.PlayerLight3 = false;
+							controller.currentOutputState.PlayerLight4 = oldStyle ? true : false;
+							controller.currentOutputState.PlayerLight5 = oldStyle ? true : false;
+							break;
+					}
+
+					if (controller.currentOutputState.PlayerLight1 != controller.lastOutputState.PlayerLight1 ||
+						controller.currentOutputState.PlayerLight2 != controller.lastOutputState.PlayerLight2 ||
+						controller.currentOutputState.PlayerLight3 != controller.lastOutputState.PlayerLight3 ||
+						controller.currentOutputState.PlayerLight4 != controller.lastOutputState.PlayerLight4 ||
+						controller.wasDisconnected) {
+						controller.currentOutputState.AllowPlayerIndicators = true;
+					}
+					else {
+						controller.currentOutputState.AllowPlayerIndicators = false;
+					}
+
+					if (!inputData.ButtonMute && controller.currentInputState.ButtonMute) {
+						controller.isMicMuted = !controller.isMicMuted;
+						controller.currentOutputState.MuteLightMode = controller.isMicMuted ? MuteLight::On : MuteLight::Off;
+						controller.currentOutputState.MicMute = controller.isMicMuted;
+						controller.currentOutputState.AllowMuteLight = true;
+						if(isBt) { // mic led won't change without these on bluetooth
+							controller.currentOutputState.AllowLedColor = true;
+							controller.currentOutputState.AllowPlayerIndicators = true;
+						}
+					}
+					else {
+						controller.currentOutputState.AllowMuteLight = false;
+					}
+
+					if (controller.wasDisconnected) {
+						controller.currentOutputState.MicMute = controller.isMicMuted;
+						controller.currentOutputState.AllowMuteLight = true;
+					}
+
+					if (controller.triggerMask & SCE_PAD_TRIGGER_EFFECT_TRIGGER_MASK_L2 || controller.wasDisconnected) {
+						controller.currentOutputState.AllowLeftTriggerFFB = true;
+						for (int i = 0; i < 11; i++) {
+							controller.currentOutputState.LeftTriggerFFB[i] = controller.L2.force[i];
+						}
+					}
+					else {
+						controller.currentOutputState.AllowLeftTriggerFFB = false;
+					}
+
+					if (controller.triggerMask & SCE_PAD_TRIGGER_EFFECT_TRIGGER_MASK_R2 || controller.wasDisconnected) {
+						controller.currentOutputState.AllowRightTriggerFFB = true;
+						for (int i = 0; i < 11; i++) {
+							controller.currentOutputState.RightTriggerFFB[i] = controller.R2.force[i];
+						}
+					}
+					else {
+						controller.currentOutputState.AllowRightTriggerFFB = false;
+					}
+
+					controller.triggerMask = 0;
+					res = -1;
+
+					if (controller.connectionType == HID_API_BUS_USB || controller.connectionType == HID_API_BUS_UNKNOWN) {
+						ReportOut02 usbOutput = {};
+
+						usbOutput.ReportID = 0x02;
+						usbOutput.State = controller.currentOutputState;
+
+						if ( (controller.currentOutputState != controller.lastOutputState) || controller.wasDisconnected) {
+							res = hid_write(controller.handle,reinterpret_cast<unsigned char*>(&usbOutput), sizeof(usbOutput));		
+						}
+					}
+					else if (controller.connectionType == HID_API_BUS_BLUETOOTH) {
+						ReportOut31 btOutput = {};
+
+						btOutput.Data.ReportID = 0x31;
+						btOutput.Data.flag = 2;
+						btOutput.Data.State = controller.currentOutputState;
+
+						uint32_t crc = compute(btOutput.CRC.Buff, sizeof(btOutput) - 4);
+						btOutput.CRC.CRC = crc;
+						if ( (controller.currentOutputState != controller.lastOutputState) || controller.wasDisconnected) {
+							res = hid_write(controller.handle, reinterpret_cast<unsigned char*>(&btOutput), sizeof(btOutput));
+						}
+					}
+
+					if (res > 0) {
+						controller.lastOutputState = controller.currentOutputState;
+						controller.wasDisconnected = false;
+						
+						std::cout << "Controller idx " << controller.sceHandle
+							<< " path=" << controller.macAddress
+							<< " connType=" << (int)controller.connectionType
+							<< std::endl;
+					}
+
+					controller.currentInputState = inputData;
 				}
 			}
 			else if (!controller.valid && controller.opened) {
@@ -400,9 +410,8 @@ int readFunc() {
 		if (allInvalid) {
 			std::this_thread::sleep_for(std::chrono::seconds(1));
 		}
-		else {
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		}
+		
+		std::this_thread::sleep_for(std::chrono::nanoseconds(200));
 	}
 
 	return 0;
@@ -414,7 +423,7 @@ int watchFunc() {
 			bool valid;
 			{
 				std::lock_guard<std::mutex> guard(controller.lock);
-				valid = isValid(controller.handle);
+				valid = duaLibUtils::isValid(controller.handle);
 			}
 
 			if (!valid) {
@@ -431,7 +440,7 @@ int watchFunc() {
 						hid_set_nonblocking(handle, 1);
 
 						std::string newMac;
-						if (getMacAddress(handle, newMac)) {
+						if (duaLibUtils::getMacAddress(handle, newMac)) {
 							bool already = false;
 							for (int k = 0; k < MAX_CONTROLLER_COUNT; ++k) {
 								std::lock_guard<std::mutex> guard(g_controllers[k].lock);
@@ -453,7 +462,7 @@ int watchFunc() {
 
 								const char* id = {};
 								uint16_t size = 0;
-								GetID(info->path, &id, reinterpret_cast<int*>(&size));
+								duaLibUtils::GetID(info->path, &id, reinterpret_cast<int*>(&size));
 
 								controller.id = id;
 								controller.idSize = size;
@@ -463,9 +472,7 @@ int watchFunc() {
 								if (dev == DUALSENSE_DEVICE_ID) { controller.deviceType = DUALSENSE; }
 								else if (dev == DUALSHOCK4_DEVICE_ID || dev == DUALSHOCK4V2_DEVICE_ID) { controller.deviceType = DUALSHOCK4; }
 
-
-
-								getHardwareVersion(controller.handle, controller.versionReport);
+								duaLibUtils::getHardwareVersion(controller.handle, controller.versionReport);
 
 								if (controller.deviceType == DUALSENSE && info->bus_type == HID_API_BUS_USB) {
 									ReportOut02 report = {};
@@ -524,7 +531,7 @@ int watchFunc() {
 				bool ok;
 				{
 					std::lock_guard<std::mutex> guard(controller.lock);
-					ok = getMacAddress(controller.handle, cur);
+					ok = duaLibUtils::getMacAddress(controller.handle, cur);
 					if (ok) controller.macAddress = cur;
 				}
 			}
@@ -571,7 +578,7 @@ int scePadTerminate(void) {
 		controller.wasDisconnected = true;
 		controller.macAddress = "";
 
-		letGo(controller.handle, controller.deviceType, controller.connectionType);
+		duaLibUtils::letGo(controller.handle, controller.deviceType, controller.connectionType);
 	}
 	g_particularMode = false;
 	return 0;
@@ -611,7 +618,7 @@ int scePadOpen(int userID, int, int, void*) {
 	}
 
 	if (!wasAlreadyOpened) {
-		int handle = sizeof(controller) * (firstUnused + 1);
+		int handle = sizeof(duaLibUtils::controller) * (firstUnused + 1);
 		g_controllers[firstUnused].sceHandle = handle;
 		g_controllers[firstUnused].opened = true;
 		g_controllers[firstUnused].playerIndex = userID;
@@ -635,11 +642,11 @@ int scePadReadState(int handle, void* data) {
 			s_ScePadData state;
 
 		#pragma region buttons
-			uint32_t bitmaskButtons = {};
-			if (controller.currentInputState.ButtonCross) bitmaskButtons |= 0x00004000;
-			if (controller.currentInputState.ButtonCircle) bitmaskButtons |= 0x00002000;
-			if (controller.currentInputState.ButtonTriangle) bitmaskButtons |= 0x00001000;
-			if (controller.currentInputState.ButtonSquare) bitmaskButtons |= 0x00008000;
+			uint32_t bitmaskButtons = 0;
+			if (controller.currentInputState.ButtonCross) bitmaskButtons |= SCE_BM_CROSS;
+			if (controller.currentInputState.ButtonCircle) bitmaskButtons |= SCE_BM_CIRCLE;
+			if (controller.currentInputState.ButtonTriangle) bitmaskButtons |= SCE_BM_TRIANGLE;
+			if (controller.currentInputState.ButtonSquare) bitmaskButtons |= SCE_BM_SQUARE;
 
 			if (controller.currentInputState.ButtonL1) bitmaskButtons |= 0x00000400;
 			if (controller.currentInputState.ButtonL2) bitmaskButtons |= 0x00000100;
@@ -662,6 +669,8 @@ int scePadReadState(int handle, void* data) {
 				if (controller.currentInputState.ButtonCreate) bitmaskButtons |= 0x00000001;
 				if (controller.currentInputState.ButtonHome) bitmaskButtons |= 0x00010000;
 			}
+
+			state.bitmask_buttons = bitmaskButtons;
 		#pragma endregion
 
 		#pragma region sticks
@@ -789,7 +798,7 @@ int scePadSetTriggerEffect(int handle, ScePadTriggerEffectParam* triggerEffect) 
 			controller.triggerMask = triggerEffect->triggerMask;
 
 			for (int i = 0; i <= 1; i++) {
-				trigger _trigger = {};
+				duaLibUtils::trigger _trigger = {};
 
 				if (triggerEffect->command[i].mode == ScePadTriggerEffectMode::SCE_PAD_TRIGGER_EFFECT_MODE_OFF) {
 					TriggerEffectGenerator::Off(_trigger.force, 0);
@@ -816,7 +825,7 @@ int scePadSetTriggerEffect(int handle, ScePadTriggerEffectParam* triggerEffect) 
 				if (i == SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2) {
 					for (int i = 0; i < 11; i++) {
 						controller.L2.force[i] = _trigger.force[i];
-					}				
+					}
 				}
 				else if (i == SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_R2) {
 					for (int i = 0; i < 11; i++) {
@@ -829,6 +838,18 @@ int scePadSetTriggerEffect(int handle, ScePadTriggerEffectParam* triggerEffect) 
 	return -1;
 }
 
+int scePadGetControllerBusType(int handle, int* busType) {
+	for (auto& controller : g_controllers) {
+		std::lock_guard<std::mutex> guard(controller.lock);
+
+		if (controller.sceHandle == handle) {
+			*busType = controller.connectionType;
+			return 0;
+		}
+	}
+	return -1;
+}
+
 int main() {
 	if (scePadInit() != SCE_OK) {
 		std::cout << "Failed to initalize!" << std::endl;
@@ -836,7 +857,7 @@ int main() {
 
 	//int handle = scePadOpen(1, NULL, NULL, NULL);
 	int handle = scePadOpen(1, 0, 0, 0);
-	int handle2 = scePadOpen(2, NULL, NULL, NULL);
+	//int handle2 = scePadOpen(2, 0, 0, 0);
 
 	std::cout << handle << std::endl;
 
@@ -872,7 +893,7 @@ int main() {
 	trigger2.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.weaponParam.startPosition = 2;
 	trigger2.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.weaponParam.endPosition = 7;
 	trigger2.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.weaponParam.strength = 7;
-	scePadSetTriggerEffect(handle2, &trigger2);
+	//scePadSetTriggerEffect(handle2, &trigger2);
 
 	getchar();
 

@@ -27,6 +27,7 @@
 	#include <cstdlib>
 #endif
 
+#include "definitions.h"
 #include "dataStructures.h"
 #include "crc.h"
 #include "originalLibScePadStructs.h"
@@ -34,17 +35,6 @@
 
 #ifndef _SCE_PAD_TRIGGER_EFFECT_H
 #define _SCE_PAD_TRIGGER_EFFECT_H
-
-#define SCE_PAD_TRIGGER_EFFECT_TRIGGER_MASK_L2			0x01
-#define SCE_PAD_TRIGGER_EFFECT_TRIGGER_MASK_R2			0x02
-
-#define SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2		0
-#define SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_R2		1
-
-#define SCE_PAD_TRIGGER_EFFECT_TRIGGER_NUM				2
-
-/* Definition of control point num */
-#define SCE_PAD_TRIGGER_EFFECT_CONTROL_POINT_NUM		10
 
 typedef enum ScePadTriggerEffectMode {
 	SCE_PAD_TRIGGER_EFFECT_MODE_OFF,
@@ -193,18 +183,6 @@ static_assert(sizeof(ScePadTriggerEffectParam) == 120, "ScePadTriggerEffectParam
 #endif
 
 #endif /* _SCE_PAD_TRIGGER_EFFECT_H */
-
-#define SCE_OK 0
-
-#define DEVICE_COUNT 3
-#define MAX_CONTROLLER_COUNT 4
-#define VENDOR_ID 0x54c
-#define DUALSENSE_DEVICE_ID 0x0ce6
-#define DUALSHOCK4_DEVICE_ID 0x05c4
-#define DUALSHOCK4V2_DEVICE_ID 0x09cc
-#define UNKNOWN 0
-#define DUALSHOCK4 1
-#define DUALSENSE 2
 
 struct device {
 	uint16_t Vendor = 0;
