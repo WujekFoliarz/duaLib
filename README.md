@@ -2,6 +2,8 @@
 An open source version of the official sony controller library (dualshock 4/dualsense).
 It aims to replicate the original library's behavior, possibly making it crossplatform
 
+### Our [discord server](https://discord.com/invite/AFYvxf282U)
+
 ## Progress
 
 | Controller | USB | Bluetooth |
