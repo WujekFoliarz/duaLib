@@ -14,7 +14,7 @@ It aims to replicate the original library's behavior, possibly making it crosspl
 | int scePadInit()                                                                          |✅              |
 | int scePadOpen(int userID, int, int, void*)                                               |⚠️              | The handle numbers are not accurate to libScePad's. Probably not important though
 | int scePadSetParticularMode(bool mode)                                                    |✅              | 
-| int scePadReadState(int handle, void* data)                                               |⚠️              | Orientation data missing
+| int scePadReadState(int handle, void* data)                                               |⚠️              | Orientation data missing, accelerometer and angular velocity values not accurate to libScePad
 | int scePadSetLightBar(int handle, s_SceLightBar* lightbar)                                |✅              |
 | int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* containerIdInfo) |⚠️              | Windows only
 | int scePadGetControllerBusType(int handle, int* busType)                                  |✅              |
