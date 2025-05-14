@@ -1,40 +1,15 @@
-﻿#pragma once
-
-#include <mutex>
-#include <iostream>
-#include <hidapi.h>
-#include <stdio.h>
-#include <wchar.h>
-#include <cstdint>
-#include <vector>
-#include <algorithm>
-#include <atomic>      
-#include <thread>       
-#include <chrono>      
-#include <cstring>    
-
-#ifdef _WIN32
-	#include <Windows.h>
-	#include <setupapi.h>
-	#pragma comment(lib, "setupapi.lib")
-	#pragma comment(lib, "hid.lib")
-	#pragma comment(lib, "winmm.lib")
-	#include <initguid.h>
-	#include <devpkey.h>
-	#include <hidsdi.h>
-#else
-	#include <clocale>
-	#include <cstdlib>
-#endif
-
-#include "definitions.h"
-#include "dataStructures.h"
-#include "crc.h"
-#include "originalLibScePadStructs.h"
-#include "triggerFactory.h"
+﻿#ifndef DUALIB_H
+#define DUALIB_H
 
 #ifndef _SCE_PAD_TRIGGER_EFFECT_H
 #define _SCE_PAD_TRIGGER_EFFECT_H
+
+#define SCE_PAD_TRIGGER_EFFECT_TRIGGER_MASK_L2			0x01
+#define SCE_PAD_TRIGGER_EFFECT_TRIGGER_MASK_R2			0x02
+#define SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2		0
+#define SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_R2		1
+#define SCE_PAD_TRIGGER_EFFECT_TRIGGER_NUM				2
+#define SCE_PAD_TRIGGER_EFFECT_CONTROL_POINT_NUM		10
 
 typedef enum ScePadTriggerEffectMode {
 	SCE_PAD_TRIGGER_EFFECT_MODE_OFF,
@@ -182,22 +157,218 @@ typedef struct ScePadTriggerEffectParam {
 static_assert(sizeof(ScePadTriggerEffectParam) == 120, "ScePadTriggerEffectParam has incorrect size");
 #endif
 
-#endif /* _SCE_PAD_TRIGGER_EFFECT_H */
+#endif // _SCE_PAD_TRIGGER_EFFECT_H
 
-struct device {
-	uint16_t Vendor = 0;
-	uint16_t Device = 0;
+#ifndef ORIGINAL_LIBSCEPAD_STRUCTS_H
+#define ORIGINAL_LIBSCEPAD_STRUCTS_H
+
+enum s_ScePadDeviceClass {
+	SCE_PAD_DEVICE_CLASS_INVALID = -1,
+	SCE_PAD_DEVICE_CLASS_STANDARD = 0,
+	SCE_PAD_DEVICE_CLASS_GUITAR = 1,
+	SCE_PAD_DEVICE_CLASS_DRUM = 2,
+	SCE_PAD_DEVICE_CLASS_DJ_TURNTABLE = 3,
+	SCE_PAD_DEVICE_CLASS_DANCEMAT = 4,
+	SCE_PAD_DEVICE_CLASS_NAVIGATION = 5,
+	SCE_PAD_DEVICE_CLASS_STEERING_WHEEL = 6,
+	SCE_PAD_DEVICE_CLASS_STICK = 7,
+	SCE_PAD_DEVICE_CLASS_FLIGHT_STICK = 8,
+	SCE_PAD_DEVICE_CLASS_GUN = 9,
 };
 
-struct deviceList {
-	device devices[DEVICE_COUNT];
+typedef struct {
+	uint8_t r;
+	uint8_t g;
+	uint8_t b;
+} s_SceLightBar;
 
-	deviceList() {
-		devices[0] = { VENDOR_ID, DUALSENSE_DEVICE_ID };
-		devices[1] = { VENDOR_ID, DUALSHOCK4_DEVICE_ID };
-		devices[2] = { VENDOR_ID, DUALSHOCK4V2_DEVICE_ID };
-	}
+typedef struct {
+	uint8_t X;
+	uint8_t Y;
+} s_SceStickData;
+
+struct s_SceFQuaternion {
+	float x, y, z, w;
 };
 
-deviceList g_deviceList = {};
+struct s_SceFVector3 {
+	float x, y, z;
+};
 
+struct s_ScePadTouch {
+	uint16_t x;
+	uint16_t y;
+	uint8_t id;
+	uint8_t reserve[3];
+};
+
+struct s_ScePadTouchData {
+	uint8_t touchNum;
+	uint8_t reserve[3];
+	uint32_t reserve1;
+	s_ScePadTouch touch[2];
+};
+
+struct s_ScePadExtensionUnitData {
+	uint32_t extensionUnitId;
+	uint8_t reserve[1];
+	uint8_t dataLength;
+	uint8_t data[10];
+};
+
+struct s_ScePadVibrationParam {
+	uint8_t largeMotor;
+	uint8_t smallMotor;
+};
+
+struct s_ScePadVolumeGain {
+	uint8_t speakerVolume;
+	uint8_t headsetVolume;
+	uint8_t padding;
+	uint8_t micGain;
+};
+
+struct s_ScePadTouchPadInformation {
+	float pixelDensity;
+
+	struct {
+		uint16_t x;
+		uint16_t y;
+	} resolution;
+};
+
+struct s_ScePadStickInformation {
+	uint8_t deadZoneLeft;
+	uint8_t deadZoneRight;
+};
+
+
+struct s_ScePadInfo {
+	s_ScePadTouchPadInformation touchPadInfo;
+	s_ScePadStickInformation stickInfo;
+	uint8_t connectionType;
+	uint8_t connectedCount;
+	bool connected;
+	s_ScePadDeviceClass deviceClass;
+	uint8_t reserve[8];
+};
+
+typedef struct {
+	uint32_t ExtensionUnitId;
+	uint8_t Reserve;
+	uint8_t DataLen;
+	uint8_t Data[10];
+} s_ScePadExtUnitData;
+
+typedef struct {
+	uint32_t bitmask_buttons;
+	s_SceStickData LeftStick;
+	s_SceStickData RightStick;
+	uint8_t L2_Analog;
+	uint8_t R2_Analog;
+	uint16_t padding;
+	s_SceFQuaternion orientation;
+	s_SceFVector3 acceleration;
+	s_SceFVector3 angularVelocity;
+	s_ScePadTouchData touchData;
+	bool connected;
+	uint64_t timestamp;
+	s_ScePadExtUnitData extUnitData;
+	uint8_t connectionCount;
+	uint8_t reserved[2];
+	uint8_t deviceUniqueDataLen;
+	uint8_t deviceUniqueData[12];
+
+} s_ScePadData;
+
+#pragma pack(push, 1)
+struct s_ScePadContainerIdInfo {
+	uint32_t size;
+	char id[0x2000]; // UTF-8 string
+};
+#pragma pack(pop)
+
+enum s_SceControllerType {
+	UNKNOWN = 0,
+	DUALSHOCK_4 = 1,
+	DUALSENSE = 2
+};
+
+#endif //ORIGINAL_LIBSCEPAD_STRUCTS_H
+
+#define SCE_OK 0
+
+#define SCE_BM_CROSS    0x00004000
+#define SCE_BM_CIRCLE   0x00002000
+#define SCE_BM_TRIANGLE 0x00001000
+#define SCE_BM_SQUARE   0x00008000
+#define SCE_BM_L1       0x00000400
+#define SCE_BM_L2       0x00000100
+#define SCE_BM_R1       0x00000800
+#define SCE_BM_R2       0x00000200
+#define SCE_BM_L3       0x00000002
+#define SCE_BM_R3       0x00000004
+#define SCE_BM_N_DPAD   0x00000010
+#define SCE_BM_S_DPAD   0x00000040
+#define SCE_BM_E_DPAD   0x00000020
+#define SCE_BM_W_DPAD   0x00000080
+#define SCE_BM_OPTIONS  0x00000008
+#define SCE_BM_TOUCH    0x00100000
+#define SCE_BM_SHARE    0x00000001
+#define SCE_BM_PSBTN    0x00010000
+
+#define SCE_PAD_ERROR_INVALID_ARG              0x80920001
+#define SCE_PAD_ERROR_INVALID_PORT             0x80920002
+#define SCE_PAD_ERROR_INVALID_HANDLE           0x80920003
+#define SCE_PAD_ERROR_ALREADY_OPENED           0x80920004
+#define SCE_PAD_ERROR_NOT_INITIALIZED          0x80920005
+#define SCE_PAD_ERROR_INVALID_LIGHTBAR_SETTING 0x80920006
+#define SCE_PAD_ERROR_DEVICE_NOT_CONNECTED     0x80920007
+#define SCE_PAD_ERROR_NO_HANDLE                0x80920008
+#define SCE_PAD_ERROR_FATAL                    0x809200FF
+#define SCE_PAD_ERROR_NOT_PERMITTED            0x80920101
+#define SCE_PAD_ERROR_INVALID_BUFFER_LENGTH    0x80920102
+#define SCE_PAD_ERROR_INVALID_REPORT_LENGTH    0x80920103
+#define SCE_PAD_ERROR_INVALID_REPORT_ID        0x80920104
+#define SCE_PAD_ERROR_SEND_AGAIN               0x80920105
+
+#define SCE_PAD_CONNECTION_TYPE_LOCAL              0
+#define SCE_PAD_CONNECTION_TYPE_REMOTE_VITA        1
+#define SCE_PAD_CONNECTION_TYPE_REMOTE_DUALSHOCK4  2
+
+#if defined(_WIN32) || defined(_WIN64)
+	#ifdef DUALIB_EXPORTS
+		#define DUALIB_API __declspec(dllexport)
+		#else
+		#define DUALIB_API __declspec(dllimport)
+	#endif
+#else
+	#ifdef DUALIB_EXPORTS
+		#define DUALIB_API __attribute__((visibility("default")))
+		#else
+		#define DUALIB_API
+	#endif
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+DUALIB_API int scePadInit();
+DUALIB_API int scePadTerminate();
+DUALIB_API int scePadOpen(int userID, int, int, void*);
+DUALIB_API int scePadSetParticularMode(bool mode);
+DUALIB_API int scePadReadState(int handle, void* data);
+DUALIB_API int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* containerIdInfo);
+DUALIB_API int scePadSetLightBar(int handle, s_SceLightBar* lightbar);
+DUALIB_API int scePadGetHandle(int userID, int, int);
+DUALIB_API int scePadResetLightBar(int handle);
+DUALIB_API int scePadSetTriggerEffect(int handle, ScePadTriggerEffectParam* triggerEffect);
+DUALIB_API int scePadGetControllerBusType(int handle, int* busType);
+DUALIB_API int scePadGetControllerInformation(int handle, s_ScePadInfo* info);
+DUALIB_API int scePadGetControllerType(int handle, s_SceControllerType* controllerType);
+DUALIB_API int scePadGetJackState(int handle, int* state);
+#ifdef __cplusplus
+}
+#endif
+
+#endif // DUALIB_H

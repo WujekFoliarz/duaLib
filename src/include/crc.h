@@ -1,3 +1,6 @@
+#ifndef DUALIB_CRC
+#define DUALIB_CRC
+
 #include <cstdint>
 #include <cstddef>
 
@@ -50,3 +53,5 @@ const uint32_t hashTable[256] = {
 const uint32_t crcSeed = 0xeada2d49;
 
 uint32_t compute(unsigned char* buffer, size_t len);
+
+#endif // DUALIB_CRC
