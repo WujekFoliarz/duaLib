@@ -8,20 +8,20 @@ It aims to replicate the original library's behavior, possibly making it crosspl
 
 | Controller | USB | Bluetooth |
 | -----------|-----|-----------|
-| DualShock 4|❌   |❌        |
-| DualSense  |✅   |✅        |
+| DualShock 4|❌|❌|
+| DualSense  |✅|❌|
 
 | Function                                                                                  | Implementation  | Comment  |
 | -------------                                                                             | -               |------------- | 
 | int scePadInit()                                                                          |✅              |
 | int scePadOpen(int userID, int, int, void*)                                               |⚠️              | The handle numbers are not accurate to libScePad's. Probably not important though
 | int scePadSetParticularMode(bool mode)                                                    |✅              | 
-| int scePadReadState(int handle, void* data)                                               |⚠️              | Orientation data missing, accelerometer and angular velocity values not accurate to libScePad
+| int scePadReadState(int handle, void* data)                                               |⚠️              | Orientation data missing
 | int scePadSetLightBar(int handle, s_SceLightBar* lightbar)                                |✅              |
 | int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* containerIdInfo) |⚠️              | Windows only
-| int scePadGetControllerBusType(int handle, int* busType)                                  |✅              |
-| int scePadGetControllerInformation(int handle, s_ScePadInfo* info)                        |✅              |
-| int scePadGetControllerType(int handle, s_SceControllerType* controllerType)              |✅              |
+| int scePadGetControllerBusType(int handle, int* busType)                                  |❌              |
+| int scePadGetControllerInformation(int handle, s_ScePadInfo* info)                        |❌              |
+| int scePadGetControllerType(int handle, s_SceControllerType* controllerType)              |❌              |
 | int scePadGetHandle(int userID, int, int)                                                 |✅              |
 | int scePadGetJackState(int handle, int* state)											|✅              |
 | int scePadGetTriggerEffectState(int handle, int state[2])                                 |❌              | 

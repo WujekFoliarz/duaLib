@@ -10,6 +10,7 @@
 #include <thread>       
 #include <chrono>      
 #include <cstring>    
+#include <cmath>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -30,10 +31,11 @@
 #include "crc.h"
 #include "triggerFactory.h"
 
-#define DEVICE_COUNT 3 
+#define DEVICE_COUNT 4 
 #define MAX_CONTROLLER_COUNT 4
 #define VENDOR_ID 0x54c
 #define DUALSENSE_DEVICE_ID 0x0ce6
+#define DUALSENSE_EDGE_DEVICE_ID 0x0df2
 #define DUALSHOCK4_DEVICE_ID 0x05c4
 #define DUALSHOCK4V2_DEVICE_ID 0x09cc
 #define UNKNOWN 0
@@ -257,6 +259,7 @@ namespace duaLibUtils {
 		trigger L2 = {};
 		trigger R2 = {};
 		uint8_t triggerMask = 0;
+		uint32_t lastSensorTimestamp = 0;
 	};
 }
 
@@ -270,8 +273,9 @@ struct deviceList {
 
 	deviceList() {
 		devices[0] = { VENDOR_ID, DUALSENSE_DEVICE_ID };
-		devices[1] = { VENDOR_ID, DUALSHOCK4_DEVICE_ID };
-		devices[2] = { VENDOR_ID, DUALSHOCK4V2_DEVICE_ID };
+		devices[1] = { VENDOR_ID, DUALSENSE_EDGE_DEVICE_ID };
+		devices[2] = { VENDOR_ID, DUALSHOCK4_DEVICE_ID };
+		devices[3] = { VENDOR_ID, DUALSHOCK4V2_DEVICE_ID };
 	}
 };
 
@@ -416,6 +420,7 @@ int readFunc() {
 						controller.currentOutputState.AllowRightTriggerFFB = false;
 					}
 
+					controller.currentOutputState.HostTimestamp = controller.currentInputState.SensorTimestamp;
 					controller.triggerMask = 0;
 					res = -1;
 
@@ -525,7 +530,7 @@ int watchFunc() {
 
 								uint16_t dev = g_deviceList.devices[j].Device;
 
-								if (dev == DUALSENSE_DEVICE_ID) { controller.deviceType = DUALSENSE; }
+								if (dev == DUALSENSE_DEVICE_ID || dev == DUALSENSE_EDGE_DEVICE_ID) { controller.deviceType = DUALSENSE; }
 								else if (dev == DUALSHOCK4_DEVICE_ID || dev == DUALSHOCK4V2_DEVICE_ID) { controller.deviceType = DUALSHOCK4; }
 
 								duaLibUtils::getHardwareVersion(controller.handle, controller.versionReport);
@@ -641,8 +646,7 @@ int scePadTerminate(void) {
 }
 
 int scePadOpen(int userID, int, int, void*) {
-	if (userID > DEVICE_COUNT + 1 || userID < 0)
-		return SCE_PAD_ERROR_INVALID_ARG;
+	if (userID > MAX_CONTROLLER_COUNT || userID < 0) return SCE_PAD_ERROR_INVALID_ARG;
 
 	int index = userID - 1;
 	bool wasAlreadyOpened = false;
@@ -743,19 +747,20 @@ int scePadReadState(int handle, void* data) {
 			state.R2_Analog = controller.currentInputState.TriggerRight;
 		#pragma endregion
 
-		#pragma region gyro
-			state.orientation.w = 0; // what is orientation?
-			state.orientation.x = 0;
-			state.orientation.y = 0;
-			state.orientation.z = 0;
+		#pragma region gyro		
+			float timeDiff = (controller.currentInputState.SensorTimestamp - controller.lastSensorTimestamp);
+			controller.lastSensorTimestamp = controller.currentInputState.SensorTimestamp;
+			
+			float delta = timeDiff / 1'000'000.0f;
 
-			state.acceleration.x = (float)(controller.currentInputState.AccelerometerX) / 8192;
-			state.acceleration.y = (float)(controller.currentInputState.AccelerometerY) / 8192;
-			state.acceleration.z = (float)(controller.currentInputState.AccelerometerZ) / 8192;
+			state.acceleration.x = static_cast<float>(round(controller.currentInputState.AccelerometerX) / 9000.0f);
+			state.acceleration.y = static_cast<float>(round(controller.currentInputState.AccelerometerY) / 4000.0f) - 1.000000;
+			state.acceleration.z = static_cast<float>(round(controller.currentInputState.AccelerometerZ) / 9000.0f);
+			
+			state.angularVelocity.x = static_cast<float>(round(controller.currentInputState.AngularVelocityX) / 900.0f);
+			state.angularVelocity.y = static_cast<float>(round(controller.currentInputState.AngularVelocityY) / 400.0f);
+			state.angularVelocity.z = static_cast<float>(round(controller.currentInputState.AngularVelocityZ) / 2500.0f);
 
-			state.angularVelocity.x = (float)(controller.currentInputState.AngularVelocityX) / 8192;
-			state.angularVelocity.y = (float)(controller.currentInputState.AngularVelocityY) / 8192;
-			state.angularVelocity.z = (float)(controller.currentInputState.AngularVelocityZ) / 8192;
 		#pragma endregion
 
 		#pragma region touchpad
@@ -826,9 +831,9 @@ int scePadSetLightBar(int handle, s_SceLightBar* lightbar) {
 }
 
 int scePadGetHandle(int userID, int, int) {
-	if (userID > DEVICE_COUNT + 1 || userID < 0) return SCE_PAD_ERROR_INVALID_PORT;
+	if (userID > MAX_CONTROLLER_COUNT || userID < 0) return SCE_PAD_ERROR_INVALID_PORT;
 
-	for (int i = 0; i < DEVICE_COUNT; i++) {
+	for (int i = 0; i < MAX_CONTROLLER_COUNT-1; i++) {
 		std::lock_guard<std::mutex> guard(g_controllers[i].lock);
 
 		if (g_controllers[i].playerIndex != userID) continue;
@@ -978,6 +983,10 @@ int scePadGetJackState(int handle, int* state) {
 	return SCE_PAD_ERROR_INVALID_HANDLE;
 }
 
+int scePadGetTriggerEffectState(int handle, uint8_t state[2]) {
+	return NULL;
+}
+
 int main() {
 	if (scePadInit() != SCE_OK) {
 		std::cout << "Failed to initalize!" << std::endl;
@@ -1025,6 +1034,13 @@ int main() {
 	trigger2.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.weaponParam.endPosition = 7;
 	trigger2.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.weaponParam.strength = 7;
 	//scePadSetTriggerEffect(handle2, &trigger2);
+
+	while (true) {
+		s_ScePadData data = {};
+		scePadReadState(handle, &data);
+
+		std::cout << data.acceleration.z << "\r" << std::flush;
+	}
 
 	getchar();
 

@@ -11,6 +11,14 @@
 #define SCE_PAD_TRIGGER_EFFECT_TRIGGER_NUM				2
 #define SCE_PAD_TRIGGER_EFFECT_CONTROL_POINT_NUM		10
 
+#define SCE_PAD_TRIGGER_STATE_FEEDBACK_NO_FORCE 1
+#define SCE_PAD_TRIGGER_STATE_FEEDBACK_IS_PUSHING 2
+#define SCE_PAD_TRIGGER_STATE_WEAPON_NOT_PRESSED 3
+#define SCE_PAD_TRIGGER_STATE_WEAPON_ALMOST_PRESSED 4
+#define SCE_PAD_TRIGGER_STATE_WEAPON_FULLY_PRESSED 5
+#define SCE_PAD_TRIGGER_STATE_VIBRATION_NOT_FIRING 6
+#define SCE_PAD_TRIGGER_STATE_VIBRATION_IS_FIRING 7
+
 typedef enum ScePadTriggerEffectMode {
 	SCE_PAD_TRIGGER_EFFECT_MODE_OFF,
 	SCE_PAD_TRIGGER_EFFECT_MODE_FEEDBACK,
@@ -367,6 +375,7 @@ DUALIB_API int scePadGetControllerBusType(int handle, int* busType);
 DUALIB_API int scePadGetControllerInformation(int handle, s_ScePadInfo* info);
 DUALIB_API int scePadGetControllerType(int handle, s_SceControllerType* controllerType);
 DUALIB_API int scePadGetJackState(int handle, int* state);
+DUALIB_API int scePadGetTriggerEffectState(int handle, uint8_t state[2]);
 #ifdef __cplusplus
 }
 #endif
