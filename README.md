@@ -9,7 +9,7 @@ It aims to replicate the original library's behavior, possibly making it crosspl
 | Controller | USB | Bluetooth |
 | -----------|-----|-----------|
 | DualShock 4|❌|❌|
-| DualSense  |✅|❌|
+| DualSense  |✅|✅|
 
 | Function                                                                                  | Implementation  | Comment  |
 | -------------                                                                             | -               |------------- | 
