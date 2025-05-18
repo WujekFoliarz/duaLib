@@ -19,9 +19,9 @@ It aims to replicate the original library's behavior, possibly making it crosspl
 | int scePadReadState(int handle, void* data)                                               |⚠️              | Orientation data missing
 | int scePadSetLightBar(int handle, s_SceLightBar* lightbar)                                |✅              |
 | int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* containerIdInfo) |⚠️              | Windows only
-| int scePadGetControllerBusType(int handle, int* busType)                                  |❌              |
-| int scePadGetControllerInformation(int handle, s_ScePadInfo* info)                        |❌              |
-| int scePadGetControllerType(int handle, s_SceControllerType* controllerType)              |❌              |
+| int scePadGetControllerBusType(int handle, int* busType)                                  |✅              |
+| int scePadGetControllerInformation(int handle, s_ScePadInfo* info)                        |✅              |
+| int scePadGetControllerType(int handle, s_SceControllerType* controllerType)              |✅              |
 | int scePadGetHandle(int userID, int, int)                                                 |✅              |
 | int scePadGetJackState(int handle, int* state)											|✅              |
 | int scePadGetTriggerEffectState(int handle, uint8_t state[2])                             |✅              | 
