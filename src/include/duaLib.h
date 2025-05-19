@@ -380,6 +380,7 @@ DUALIB_API int scePadGetControllerType(int handle, s_SceControllerType* controll
 DUALIB_API int scePadGetJackState(int handle, int* state);
 DUALIB_API int scePadGetTriggerEffectState(int handle, uint8_t state[2]);
 DUALIB_API int scePadIsControllerUpdateRequired(int handle);
+DUALIB_API int scePadRead(int handle, void* data, int count);
 #ifdef __cplusplus
 }
 #endif

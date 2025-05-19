@@ -1121,6 +1121,18 @@ int scePadIsControllerUpdateRequired(int handle) {
 	return SCE_PAD_ERROR_INVALID_HANDLE;
 }
 
+int scePadRead(int handle, void* data, int count) {
+	// No idea what's the purpose of this, in the original library it does literally the same thing as scePadReadState but the program crashes when count is bigger than 20
+
+	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
+	if ((count - 1) > 63) return SCE_PAD_ERROR_INVALID_ARG;
+
+	s_ScePadData thisData = {};
+	int res = scePadReadState(handle, &thisData);
+	std::memcpy(data, &thisData, sizeof(thisData));
+	return res;
+}
+
 int main() {
 	if (scePadInit() != SCE_OK) {
 		std::cout << "Failed to initalize!" << std::endl;
@@ -1170,9 +1182,13 @@ int main() {
 	//scePadSetTriggerEffect(handle2, &trigger2);
 
 	while (true) {
-		uint8_t state[2] = {};
-		scePadGetTriggerEffectState(handle, state);
-		std::cout << (int)state[1] << "\r" << std::flush;
+		//uint8_t state[2] = {};
+		//scePadGetTriggerEffectState(handle, state);
+		//std::cout << (int)state[1] << "\r" << std::flush;
+
+		s_ScePadData data = {};
+		std::cout << scePadRead(520, &data, 1) << std::endl;
+		std::cout << (int)data.L2_Analog << std::endl;
 	}
 
 	getchar();
