@@ -701,7 +701,7 @@ int scePadSetParticularMode(bool mode) {
 	return SCE_OK;
 }
 
-int scePadReadState(int handle, void* data) {
+int scePadReadState(int handle, s_ScePadData* data) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
@@ -796,7 +796,7 @@ int scePadReadState(int handle, void* data) {
 		#pragma endregion
 		}
 
-		std::memcpy(data, &state, sizeof(state));
+		*data = state;
 		return SCE_OK;
 	}
 	return SCE_PAD_ERROR_INVALID_HANDLE;
@@ -1121,7 +1121,7 @@ int scePadIsControllerUpdateRequired(int handle) {
 	return SCE_PAD_ERROR_INVALID_HANDLE;
 }
 
-int scePadRead(int handle, void* data, int count) {
+int scePadRead(int handle, void* data, int count) { 
 	// No idea what's the purpose of this, in the original library it does literally the same thing as scePadReadState but the program crashes when count is bigger than 20
 
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
@@ -1185,9 +1185,8 @@ int main() {
 		//uint8_t state[2] = {};
 		//scePadGetTriggerEffectState(handle, state);
 		//std::cout << (int)state[1] << "\r" << std::flush;
-
 		s_ScePadData data = {};
-		std::cout << scePadRead(520, &data, 1) << std::endl;
+		scePadReadState(520, &data);
 		std::cout << (int)data.L2_Analog << std::endl;
 	}
 

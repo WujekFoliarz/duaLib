@@ -368,7 +368,7 @@ DUALIB_API int scePadInit();
 DUALIB_API int scePadTerminate();
 DUALIB_API int scePadOpen(int userID, int, int, void*);
 DUALIB_API int scePadSetParticularMode(bool mode);
-DUALIB_API int scePadReadState(int handle, void* data);
+DUALIB_API int scePadReadState(int handle, s_ScePadData* data);
 DUALIB_API int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* containerIdInfo);
 DUALIB_API int scePadSetLightBar(int handle, s_SceLightBar* lightbar);
 DUALIB_API int scePadGetHandle(int userID, int, int);
@@ -380,7 +380,8 @@ DUALIB_API int scePadGetControllerType(int handle, s_SceControllerType* controll
 DUALIB_API int scePadGetJackState(int handle, int* state);
 DUALIB_API int scePadGetTriggerEffectState(int handle, uint8_t state[2]);
 DUALIB_API int scePadIsControllerUpdateRequired(int handle);
-DUALIB_API int scePadRead(int handle, void* data, int count);
+/// Don't use this. Use scePadReadState instead
+DUALIB_API int scePadRead(int handle, void* data, int count);  
 #ifdef __cplusplus
 }
 #endif
