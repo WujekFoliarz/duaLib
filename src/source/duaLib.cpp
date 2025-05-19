@@ -238,6 +238,7 @@ namespace duaLibUtils {
 		uint16_t sceHandle = 0;
 		uint8_t playerIndex = 0;
 		uint8_t deviceType = UNKNOWN;
+		uint16_t productID = 0;
 		uint8_t seqNo = 0;
 		std::mutex lock;
 		uint8_t connectionType = 0;
@@ -253,8 +254,8 @@ namespace duaLibUtils {
 		dualsenseData::ReportFeatureInVersion versionReport = {};
 		std::string macAddress = "";
 		std::string systemIdentifier = "";
-		const char* lastPath = "";
-		const char* id = "";
+		std::string lastPath = "";
+		std::string id = "";
 		uint16_t idSize = 0;
 		trigger L2 = {};
 		trigger R2 = {};
@@ -462,6 +463,7 @@ int readFunc() {
 				}
 			}
 			else if (!controller.valid && controller.opened) {
+				controller.productID = 0;
 				controller.lastPath = "";
 				controller.macAddress = "";
 				controller.wasDisconnected = true;
@@ -520,6 +522,7 @@ int watchFunc() {
 								controller.valid = true;
 								controller.failedReadCount = 0;
 								controller.lastPath = info->path;
+								controller.productID = g_deviceList.devices[j].Device;
 
 								const char* id = {};
 								uint16_t size = 0;
@@ -622,12 +625,14 @@ int scePadInit() {
 		g_watchThread = std::thread(watchFunc);
 		g_readThread.detach();
 		g_watchThread.detach();
+		g_initialized = true;
 	}
 
 	return 0;
 }
 
 int scePadTerminate(void) {
+	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 	g_threadRunning = false;
 	g_initialized = false;
 
@@ -636,6 +641,7 @@ int scePadTerminate(void) {
 		controller.valid = false;
 		controller.sceHandle = 0;
 		controller.lastPath = "";
+		controller.productID = 0;
 		controller.wasDisconnected = true;
 		controller.macAddress = "";
 
@@ -646,6 +652,7 @@ int scePadTerminate(void) {
 }
 
 int scePadOpen(int userID, int, int, void*) {
+	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 	if (userID > MAX_CONTROLLER_COUNT || userID < 0) return SCE_PAD_ERROR_INVALID_ARG;
 
 	int index = userID - 1;
@@ -689,11 +696,14 @@ int scePadOpen(int userID, int, int, void*) {
 }
 
 int scePadSetParticularMode(bool mode) {
+	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 	g_particularMode = mode;
 	return SCE_OK;
 }
 
 int scePadReadState(int handle, void* data) {
+	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
+
 	for (auto& controller : g_controllers) {
 		std::lock_guard<std::mutex> guard(controller.lock);
 
@@ -793,6 +803,8 @@ int scePadReadState(int handle, void* data) {
 }
 
 int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* containerIdInfo) {
+	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
+
 #ifdef _WIN32 // Windows only for now
 	for (auto& controller : g_controllers) {
 		std::lock_guard<std::mutex> guard(controller.lock);
@@ -801,7 +813,7 @@ int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* contain
 
 			s_ScePadContainerIdInfo info = {};
 			info.size = controller.idSize;
-			strncpy_s(info.id, controller.id, sizeof(info.id) - 1);
+			strncpy_s(info.id, controller.id.c_str(), sizeof(info.id) - 1);
 			info.id[sizeof(info.id) - 1] = '\0';
 			*containerIdInfo = info;
 			return SCE_OK;
@@ -814,6 +826,8 @@ int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* contain
 }
 
 int scePadSetLightBar(int handle, s_SceLightBar* lightbar) {
+	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
+
 	for (auto& controller : g_controllers) {
 		std::lock_guard<std::mutex> guard(controller.lock);
 
@@ -831,6 +845,7 @@ int scePadSetLightBar(int handle, s_SceLightBar* lightbar) {
 }
 
 int scePadGetHandle(int userID, int, int) {
+	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 	if (userID > MAX_CONTROLLER_COUNT || userID < 0) return SCE_PAD_ERROR_INVALID_PORT;
 
 	for (int i = 0; i < MAX_CONTROLLER_COUNT - 1; i++) {
@@ -843,6 +858,8 @@ int scePadGetHandle(int userID, int, int) {
 }
 
 int scePadResetLightBar(int handle) {
+	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
+
 	for (auto& controller : g_controllers) {
 		std::lock_guard<std::mutex> guard(controller.lock);
 
@@ -860,6 +877,8 @@ int scePadResetLightBar(int handle) {
 }
 
 int scePadSetTriggerEffect(int handle, ScePadTriggerEffectParam* triggerEffect) {
+	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
+
 	for (auto& controller : g_controllers) {
 		std::lock_guard<std::mutex> guard(controller.lock);
 
@@ -912,6 +931,8 @@ int scePadSetTriggerEffect(int handle, ScePadTriggerEffectParam* triggerEffect) 
 }
 
 int scePadGetControllerBusType(int handle, int* busType) {
+	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
+
 	for (auto& controller : g_controllers) {
 		std::lock_guard<std::mutex> guard(controller.lock);
 
@@ -927,6 +948,8 @@ int scePadGetControllerBusType(int handle, int* busType) {
 }
 
 int scePadGetControllerInformation(int handle, s_ScePadInfo* info) {
+	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
+
 	for (auto& controller : g_controllers) {
 		std::lock_guard<std::mutex> guard(controller.lock);
 
@@ -937,9 +960,9 @@ int scePadGetControllerInformation(int handle, s_ScePadInfo* info) {
 
 		_info.touchPadInfo.resolution.x = controller.deviceType == DUALSENSE ? 1920 : 1920;
 		_info.touchPadInfo.resolution.y = controller.deviceType == DUALSENSE ? 1080 : 1080; // I don't think the dualshock 4 res in 1080 here but that's what the original library outputs
-		_info.touchPadInfo.pixelDensity = DUALSENSE ? 44.86 : 44;
-		_info.stickInfo.deadZoneLeft = DUALSENSE ? 13 : 13;
-		_info.stickInfo.deadZoneRight = DUALSENSE ? 13 : 13;
+		_info.touchPadInfo.pixelDensity = controller.deviceType == DUALSENSE ? 44.86 : 44;
+		_info.stickInfo.deadZoneLeft = controller.deviceType == DUALSENSE ? 13 : 13;
+		_info.stickInfo.deadZoneRight = controller.deviceType == DUALSENSE ? 13 : 13;
 		_info.connectionType = SCE_PAD_CONNECTION_TYPE_LOCAL;
 		_info.connectedCount = 1;
 		_info.connected = controller.valid;
@@ -952,6 +975,8 @@ int scePadGetControllerInformation(int handle, s_ScePadInfo* info) {
 }
 
 int scePadGetControllerType(int handle, s_SceControllerType* controllerType) {
+	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
+
 	for (auto& controller : g_controllers) {
 		std::lock_guard<std::mutex> guard(controller.lock);
 
@@ -968,6 +993,8 @@ int scePadGetControllerType(int handle, s_SceControllerType* controllerType) {
 }
 
 int scePadGetJackState(int handle, int* state) {
+	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
+
 	for (auto& controller : g_controllers) {
 		std::lock_guard<std::mutex> guard(controller.lock);
 
@@ -984,6 +1011,8 @@ int scePadGetJackState(int handle, int* state) {
 }
 
 int scePadGetTriggerEffectState(int handle, uint8_t state[2]) {
+	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
+
 	for (auto& controller : g_controllers) {
 		std::lock_guard<std::mutex> guard(controller.lock);
 
@@ -1065,6 +1094,29 @@ int scePadGetTriggerEffectState(int handle, uint8_t state[2]) {
 
 
 		return SCE_OK;
+	}
+	return SCE_PAD_ERROR_INVALID_HANDLE;
+}
+
+int scePadIsControllerUpdateRequired(int handle) {
+	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
+
+	for (auto& controller : g_controllers) {
+		std::lock_guard<std::mutex> guard(controller.lock);
+
+		if (controller.sceHandle != handle) continue;
+		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;	
+		if (controller.productID != DUALSENSE_DEVICE_ID && controller.productID != DUALSENSE_EDGE_DEVICE_ID) return -2137915385LL; // undocumented error
+
+		if (controller.productID == DUALSENSE_DEVICE_ID && controller.versionReport.UpdateVersion < 0x390u) {		
+			return SCE_PAD_UPDATE_REQUIRED;
+		}
+
+		if (controller.productID == DUALSENSE_EDGE_DEVICE_ID && controller.versionReport.UpdateVersion < 0x150u) {
+			return SCE_PAD_UPDATE_REQUIRED;
+		}
+		
+		return SCE_PAD_UPDATE_NOT_REQUIRED;
 	}
 	return SCE_PAD_ERROR_INVALID_HANDLE;
 }

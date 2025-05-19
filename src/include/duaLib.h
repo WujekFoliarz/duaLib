@@ -344,6 +344,9 @@ enum s_SceControllerType {
 #define SCE_PAD_CONNECTION_TYPE_REMOTE_VITA        1
 #define SCE_PAD_CONNECTION_TYPE_REMOTE_DUALSHOCK4  2
 
+#define SCE_PAD_UPDATE_NOT_REQUIRED 0
+#define SCE_PAD_UPDATE_REQUIRED 1
+
 #if defined(_WIN32) || defined(_WIN64)
 	#ifdef DUALIB_EXPORTS
 		#define DUALIB_API __declspec(dllexport)
@@ -376,6 +379,7 @@ DUALIB_API int scePadGetControllerInformation(int handle, s_ScePadInfo* info);
 DUALIB_API int scePadGetControllerType(int handle, s_SceControllerType* controllerType);
 DUALIB_API int scePadGetJackState(int handle, int* state);
 DUALIB_API int scePadGetTriggerEffectState(int handle, uint8_t state[2]);
+DUALIB_API int scePadIsControllerUpdateRequired(int handle);
 #ifdef __cplusplus
 }
 #endif

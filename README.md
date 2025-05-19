@@ -25,7 +25,7 @@ It aims to replicate the original library's behavior, possibly making it crosspl
 | int scePadGetHandle(int userID, int, int)                                                 |✅              |
 | int scePadGetJackState(int handle, int* state)											|✅              |
 | int scePadGetTriggerEffectState(int handle, uint8_t state[2])                             |✅              | 
-| int scePadIsControllerUpdateRequired(int handle)                                          |❌              |
+| int scePadIsControllerUpdateRequired(int handle)                                          |✅              |
 | int scePadRead(int handle, void* data, int count)                                         |❌              |
 | int scePadResetLightBar(int handle)                                                       |✅              |
 | int scePadResetOrientation(int handle)                                                    |❌              |
