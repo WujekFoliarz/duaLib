@@ -750,13 +750,13 @@ int scePadReadState(int handle, void* data) {
 		#pragma region gyro		
 			float timeDiff = (controller.currentInputState.SensorTimestamp - controller.lastSensorTimestamp);
 			controller.lastSensorTimestamp = controller.currentInputState.SensorTimestamp;
-			
+
 			float delta = timeDiff / 1'000'000.0f;
 
 			state.acceleration.x = static_cast<float>(round(controller.currentInputState.AccelerometerX) / 9000.0f);
 			state.acceleration.y = static_cast<float>(round(controller.currentInputState.AccelerometerY) / 4000.0f) - 1.000000;
 			state.acceleration.z = static_cast<float>(round(controller.currentInputState.AccelerometerZ) / 9000.0f);
-			
+
 			state.angularVelocity.x = static_cast<float>(round(controller.currentInputState.AngularVelocityX) / 900.0f);
 			state.angularVelocity.y = static_cast<float>(round(controller.currentInputState.AngularVelocityY) / 400.0f);
 			state.angularVelocity.z = static_cast<float>(round(controller.currentInputState.AngularVelocityZ) / 2500.0f);
@@ -833,7 +833,7 @@ int scePadSetLightBar(int handle, s_SceLightBar* lightbar) {
 int scePadGetHandle(int userID, int, int) {
 	if (userID > MAX_CONTROLLER_COUNT || userID < 0) return SCE_PAD_ERROR_INVALID_PORT;
 
-	for (int i = 0; i < MAX_CONTROLLER_COUNT-1; i++) {
+	for (int i = 0; i < MAX_CONTROLLER_COUNT - 1; i++) {
 		std::lock_guard<std::mutex> guard(g_controllers[i].lock);
 
 		if (g_controllers[i].playerIndex != userID) continue;
@@ -984,7 +984,89 @@ int scePadGetJackState(int handle, int* state) {
 }
 
 int scePadGetTriggerEffectState(int handle, uint8_t state[2]) {
-	return NULL;
+	for (auto& controller : g_controllers) {
+		std::lock_guard<std::mutex> guard(controller.lock);
+
+		if (controller.sceHandle != handle) continue;
+		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
+		if (controller.deviceType != DUALSENSE) return SCE_PAD_ERROR_NOT_PERMITTED;
+
+		switch (controller.currentInputState.TriggerLeftEffect) {
+			case 1:
+				switch (controller.currentInputState.TriggerLeftStatus) {
+					case 0:
+						state[0] = SCE_PAD_TRIGGER_STATE_FEEDBACK_NO_FORCE;
+						break;
+					case 1:
+						state[0] = SCE_PAD_TRIGGER_STATE_FEEDBACK_IS_PUSHING;
+						break;
+				}
+				break;
+			case 2:
+				switch (controller.currentInputState.TriggerLeftStatus) {
+					case 0:
+						state[0] = SCE_PAD_TRIGGER_STATE_WEAPON_NOT_PRESSED;
+						break;
+					case 1:
+						state[0] = SCE_PAD_TRIGGER_STATE_WEAPON_ALMOST_PRESSED;
+						break;
+					case 2:
+						state[0] = SCE_PAD_TRIGGER_STATE_WEAPON_FULLY_PRESSED;
+						break;
+				}
+				break;
+			case 3:
+				switch (controller.currentInputState.TriggerLeftStatus) {
+					case 0:
+						state[0] = SCE_PAD_TRIGGER_STATE_VIBRATION_NOT_FIRING;
+						break;
+					case 1:
+						state[0] = SCE_PAD_TRIGGER_STATE_VIBRATION_IS_FIRING;
+						break;
+				}
+				break;
+		}
+
+		switch (controller.currentInputState.TriggerRightEffect) {
+			case 1:
+				switch (controller.currentInputState.TriggerRightStatus) {
+					case 0:
+						state[1] = SCE_PAD_TRIGGER_STATE_FEEDBACK_NO_FORCE;
+						break;
+					case 1:
+						state[1] = SCE_PAD_TRIGGER_STATE_FEEDBACK_IS_PUSHING;
+						break;
+				}
+				break;
+			case 2:
+				switch (controller.currentInputState.TriggerRightStatus) {
+					case 0:
+						state[1] = SCE_PAD_TRIGGER_STATE_WEAPON_NOT_PRESSED;
+						break;
+					case 1:
+						state[1] = SCE_PAD_TRIGGER_STATE_WEAPON_ALMOST_PRESSED;
+						break;
+					case 2:
+						state[1] = SCE_PAD_TRIGGER_STATE_WEAPON_FULLY_PRESSED;
+						break;
+				}
+				break;
+			case 3:
+				switch (controller.currentInputState.TriggerRightStatus) {
+					case 0:
+						state[1] = SCE_PAD_TRIGGER_STATE_VIBRATION_NOT_FIRING;
+						break;
+					case 1:
+						state[1] = SCE_PAD_TRIGGER_STATE_VIBRATION_IS_FIRING;
+						break;
+				}
+				break;
+		}
+
+
+		return SCE_OK;
+	}
+	return SCE_PAD_ERROR_INVALID_HANDLE;
 }
 
 int main() {
@@ -1036,10 +1118,9 @@ int main() {
 	//scePadSetTriggerEffect(handle2, &trigger2);
 
 	while (true) {
-		s_ScePadData data = {};
-		scePadReadState(handle, &data);
-
-		std::cout << data.acceleration.z << "\r" << std::flush;
+		uint8_t state[2] = {};
+		scePadGetTriggerEffectState(handle, state);
+		std::cout << (int)state[1] << "\r" << std::flush;
 	}
 
 	getchar();
