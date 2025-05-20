@@ -1344,7 +1344,6 @@ int main() {
 		s_ScePadData data = {};
 		scePadReadState(handle, &data);
 		std::cout << data.angularVelocity.z << std::endl;
-		Sleep(100);
 	}
 
 	getchar();
