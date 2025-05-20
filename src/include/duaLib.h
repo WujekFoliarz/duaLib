@@ -306,6 +306,7 @@ enum s_SceControllerType {
 
 #define SCE_OK 0
 
+// Buttons
 #define SCE_BM_CROSS    0x00004000
 #define SCE_BM_CIRCLE   0x00002000
 #define SCE_BM_TRIANGLE 0x00001000
@@ -325,6 +326,7 @@ enum s_SceControllerType {
 #define SCE_BM_SHARE    0x00000001
 #define SCE_BM_PSBTN    0x00010000
 
+// Errors
 #define SCE_PAD_ERROR_INVALID_ARG              0x80920001
 #define SCE_PAD_ERROR_INVALID_PORT             0x80920002
 #define SCE_PAD_ERROR_INVALID_HANDLE           0x80920003
@@ -340,12 +342,24 @@ enum s_SceControllerType {
 #define SCE_PAD_ERROR_INVALID_REPORT_ID        0x80920104
 #define SCE_PAD_ERROR_SEND_AGAIN               0x80920105
 
+// Connection types
 #define SCE_PAD_CONNECTION_TYPE_LOCAL              0
 #define SCE_PAD_CONNECTION_TYPE_REMOTE_VITA        1
 #define SCE_PAD_CONNECTION_TYPE_REMOTE_DUALSHOCK4  2
 
+// scePadIsControllerUpdateRequired output
 #define SCE_PAD_UPDATE_NOT_REQUIRED 0
 #define SCE_PAD_UPDATE_REQUIRED 1
+
+// Audio paths
+#define SCE_PAD_AUDIO_PATH_STEREO_HEADSET 0x00
+#define SCE_PAD_AUDIO_PATH_MONO_LEFT_HEADSET 0x01
+#define SCE_PAD_AUDIO_PATH_MONO_LEFT_HEADSET_AND_SPEAKER 0x02
+#define SCE_PAD_AUDIO_PATH_ONLY_SPEAKER 0x03
+
+// Vibration modes
+#define SCE_PAD_HAPTICS_MODE 0x01
+#define SCE_PAD_RUMBLE_MODE 0x02
 
 #if defined(_WIN32) || defined(_WIN64)
 	#ifdef DUALIB_EXPORTS
@@ -382,6 +396,12 @@ DUALIB_API int scePadGetTriggerEffectState(int handle, uint8_t state[2]);
 DUALIB_API int scePadIsControllerUpdateRequired(int handle);
 /// Don't use this. Use scePadReadState instead
 DUALIB_API int scePadRead(int handle, void* data, int count);  
+DUALIB_API int scePadResetOrientation(int handle);
+DUALIB_API int scePadSetAngularVelocityDeadbandState(int handle, bool state);
+DUALIB_API int scePadSetAudioOutPath(int handle, int path);
+DUALIB_API int scePadSetMotionSensorState(int handle, bool state);
+DUALIB_API int scePadSetVibration(int handle, s_ScePadVibrationParam* vibration);
+DUALIB_API int scePadSetVibrationMode(int handle, int mode);
 #ifdef __cplusplus
 }
 #endif

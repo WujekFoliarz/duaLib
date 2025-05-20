@@ -16,7 +16,7 @@ It aims to replicate the original library's behavior, possibly making it crosspl
 | int scePadInit()                                                                          |✅              |
 | int scePadOpen(int userID, int, int, void*)                                               |⚠️              | The handle numbers are not accurate to libScePad's. Probably not important though
 | int scePadSetParticularMode(bool mode)                                                    |✅              | 
-| int scePadReadState(int handle, void* data)                                               |⚠️              | Orientation data missing
+| int scePadReadState(int handle, s_ScePadData* data)                                       |⚠️              | Orientation data missing
 | int scePadSetLightBar(int handle, s_SceLightBar* lightbar)                                |✅              |
 | int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* containerIdInfo) |⚠️              | Windows only
 | int scePadGetControllerBusType(int handle, int* busType)                                  |✅              |
@@ -29,13 +29,13 @@ It aims to replicate the original library's behavior, possibly making it crosspl
 | int scePadRead(int handle, void* data, int count)                                         |✅              |
 | int scePadResetLightBar(int handle)                                                       |✅              |
 | int scePadResetOrientation(int handle)                                                    |❌              |
-| int scePadSetAngularVelocityDeadbandState(int handle, bool state)                         |❌              |
-| int scePadSetAudioOutPath(int handle, int path)                                           |❌              |
-| int scePadSetMotionSensorState(int handle, bool state)                                    |❌              |
+| int scePadSetAngularVelocityDeadbandState(int handle, bool state)                         |✅              |
+| int scePadSetAudioOutPath(int handle, int path)                                           |✅              |
+| int scePadSetMotionSensorState(int handle, bool state)                                    |✅              |
 | int scePadSetTiltCorrectionState(int handle, bool state)                                  |❌              |
 | int scePadSetTriggerEffect(int handle, ScePadTriggerEffectParam* triggerEffect)           |✅              |
-| int scePadSetVibration(int handle, s_ScePadVibrationParam* vibration)                     |❌              |
-| int scePadSetVibrationMode(int handle, int mode)                                          |❌              |
+| int scePadSetVibration(int handle, s_ScePadVibrationParam* vibration)                     |✅              |
+| int scePadSetVibrationMode(int handle, int mode)                                          |✅              |
 | int scePadSetVolumeGain(int handle, s_ScePadVolumeGain* gainSettings)                     |❌              |
 | int scePadIsSupportedAudioFunction(int handle)                                            |❌              |
 | int scePadTerminate(void)                                                                 |✅              |

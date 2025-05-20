@@ -366,7 +366,9 @@ namespace dualsenseData {
 				PlayerLight3 == other.PlayerLight3 &&
 				PlayerLight4 == other.PlayerLight4 &&
 				PlayerLight5 == other.PlayerLight5 &&
-				MuteLightMode == other.MuteLightMode;
+				MuteLightMode == other.MuteLightMode &&
+				RumbleEmulationLeft == other.RumbleEmulationLeft &&
+				RumbleEmulationRight == other.RumbleEmulationRight;
 		}
 
 		bool operator!=(const SetStateData& other) const {
