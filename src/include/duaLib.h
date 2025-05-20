@@ -380,7 +380,7 @@ extern "C" {
 #endif
 DUALIB_API int scePadInit();
 DUALIB_API int scePadTerminate();
-DUALIB_API int scePadOpen(int userID, int, int, void*);
+DUALIB_API int scePadOpen(int userID, int, int);
 DUALIB_API int scePadSetParticularMode(bool mode);
 DUALIB_API int scePadReadState(int handle, s_ScePadData* data);
 DUALIB_API int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* containerIdInfo);
@@ -392,7 +392,7 @@ DUALIB_API int scePadGetControllerBusType(int handle, int* busType);
 DUALIB_API int scePadGetControllerInformation(int handle, s_ScePadInfo* info);
 DUALIB_API int scePadGetControllerType(int handle, s_SceControllerType* controllerType);
 DUALIB_API int scePadGetJackState(int handle, int* state);
-DUALIB_API int scePadGetTriggerEffectState(int handle, uint8_t state[2]);
+DUALIB_API int scePadGetTriggerEffectState(int handle, int state[2]);
 DUALIB_API int scePadIsControllerUpdateRequired(int handle);
 /// Don't use this. Use scePadReadState instead
 DUALIB_API int scePadRead(int handle, void* data, int count);  
@@ -400,8 +400,12 @@ DUALIB_API int scePadResetOrientation(int handle);
 DUALIB_API int scePadSetAngularVelocityDeadbandState(int handle, bool state);
 DUALIB_API int scePadSetAudioOutPath(int handle, int path);
 DUALIB_API int scePadSetMotionSensorState(int handle, bool state);
+DUALIB_API int scePadSetTiltCorrectionState(int handle, bool state);
 DUALIB_API int scePadSetVibration(int handle, s_ScePadVibrationParam* vibration);
 DUALIB_API int scePadSetVibrationMode(int handle, int mode);
+DUALIB_API int scePadSetVolumeGain(int handle, s_ScePadVolumeGain* gainSettings);
+DUALIB_API int scePadIsSupportedAudioFunction(int handle);
+DUALIB_API int scePadClose(int handle);
 #ifdef __cplusplus
 }
 #endif

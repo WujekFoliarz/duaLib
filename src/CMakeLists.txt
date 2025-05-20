@@ -9,7 +9,8 @@ find_package(Threads REQUIRED)
 
 file(GLOB_RECURSE MY_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp")
 
-add_executable(${PROJECT_NAME} ${MY_SOURCES})
+#add_executable(${PROJECT_NAME} ${MY_SOURCES})
+add_library(${PROJECT_NAME} SHARED ${MY_SOURCES})
 
 target_include_directories(${PROJECT_NAME}
   PUBLIC

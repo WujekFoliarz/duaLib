@@ -28,16 +28,16 @@ It aims to replicate the original library's behavior, possibly making it crosspl
 | int scePadIsControllerUpdateRequired(int handle)                                          |✅              |
 | int scePadRead(int handle, void* data, int count)                                         |✅              |
 | int scePadResetLightBar(int handle)                                                       |✅              |
-| int scePadResetOrientation(int handle)                                                    |❌              |
+| int scePadResetOrientation(int handle)                                                    |✅              |
 | int scePadSetAngularVelocityDeadbandState(int handle, bool state)                         |✅              |
 | int scePadSetAudioOutPath(int handle, int path)                                           |✅              |
 | int scePadSetMotionSensorState(int handle, bool state)                                    |✅              |
-| int scePadSetTiltCorrectionState(int handle, bool state)                                  |❌              |
+| int scePadSetTiltCorrectionState(int handle, bool state)                                  |⚠️              | Does nothing
 | int scePadSetTriggerEffect(int handle, ScePadTriggerEffectParam* triggerEffect)           |✅              |
 | int scePadSetVibration(int handle, s_ScePadVibrationParam* vibration)                     |✅              |
 | int scePadSetVibrationMode(int handle, int mode)                                          |✅              |
-| int scePadSetVolumeGain(int handle, s_ScePadVolumeGain* gainSettings)                     |❌              |
-| int scePadIsSupportedAudioFunction(int handle)                                            |❌              |
+| int scePadSetVolumeGain(int handle, s_ScePadVolumeGain* gainSettings)                     |✅              |
+| int scePadIsSupportedAudioFunction(int handle)                                            |✅              |
 | int scePadTerminate(void)                                                                 |✅              |
 
  ## Credits
