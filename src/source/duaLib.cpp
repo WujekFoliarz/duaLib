@@ -890,7 +890,10 @@ int scePadReadState(int handle, s_ScePadData* data) {
 				controller.deltaTime = std::chrono::duration_cast<std::chrono::microseconds>(now - controller.lastUpdate).count() / 1000000.0f;
 				controller.lastUpdate = now;
 
-				s_SceFVector3 accel = { controller.dualsenseCurInputState.AccelerometerX,controller.dualsenseCurInputState.AccelerometerY,controller.dualsenseCurInputState.AccelerometerZ };
+				s_SceFVector3 accel = {};
+				accel.x = (float)controller.dualsenseCurInputState.AccelerometerX;
+				accel.y = (float)controller.dualsenseCurInputState.AccelerometerY;
+				accel.z = (float)controller.dualsenseCurInputState.AccelerometerZ;
 				//s_SceFVector3 angular = { controller.dualsenseCurInputState.AngularVelocityX,controller.dualsenseCurInputState.AngularVelocityY,controller.dualsenseCurInputState.AngularVelocityZ };
 
 				accel = Vec3Normalize(accel);
