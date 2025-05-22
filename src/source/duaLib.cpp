@@ -815,7 +815,7 @@ int scePadSetParticularMode(bool mode) {
 }
 
 static float Vec3Length(const s_SceFVector3& v) {
-	return std::sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+	return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
 static s_SceFVector3 Vec3Normalize(const s_SceFVector3& v) {
