@@ -267,10 +267,13 @@ namespace duaLibUtils {
 		bool velocityDeadband = false;
 		bool motionSensorState = true;
 		bool tiltCorrection = false;
-		s_SceFQuaternion orientation = {};
+		s_SceFQuaternion orientation = {1.0f,1.0f,1.0f,1.0f };
 		float eInt[3] = { 0.0f, 0.0f, 0.0f };
+		std::chrono::steady_clock::time_point lastUpdate = {};
+		float deltaTime = 0.0f;
 	};
 
+	// https://github.com/shadps4-emu/shadPS4/blob/main/src/input/controller.cpp#L174
 	const float Kp = 50.0f;
 	const float Ki = 1.0f;
 	void CalculateOrientation(s_SceFVector3& acceleration, s_SceFVector3& angularVelocity, float deltaTime, s_SceFQuaternion& orientation, controller& ctr) {
@@ -811,6 +814,19 @@ int scePadSetParticularMode(bool mode) {
 	return SCE_OK;
 }
 
+static float Vec3Length(const s_SceFVector3& v) {
+	return std::sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+static s_SceFVector3 Vec3Normalize(const s_SceFVector3& v) {
+	float len = Vec3Length(v);
+	if (len > 0.0f) {
+		return { v.x / len, v.y / len, v.z / len };
+	}
+	return v;
+}
+
+constexpr float angVelScale = 50.0f / 32767.0f;
 int scePadReadState(int handle, s_ScePadData* data) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
@@ -870,22 +886,28 @@ int scePadReadState(int handle, s_ScePadData* data) {
 		#pragma region gyro		
 			if(controller.motionSensorState)
 			{
-				float timeDiff = (controller.dualsenseCurInputState.SensorTimestamp - controller.lastSensorTimestamp);
-				controller.lastSensorTimestamp = controller.dualsenseCurInputState.SensorTimestamp;
+				auto now = std::chrono::steady_clock::now();
+				controller.deltaTime = std::chrono::duration_cast<std::chrono::microseconds>(now - controller.lastUpdate).count() / 1000000.0f;
+				controller.lastUpdate = now;
 
-				float delta = timeDiff / 1'000'000.0f;
+				s_SceFVector3 accel = { controller.dualsenseCurInputState.AccelerometerX,controller.dualsenseCurInputState.AccelerometerY,controller.dualsenseCurInputState.AccelerometerZ };
+				//s_SceFVector3 angular = { controller.dualsenseCurInputState.AngularVelocityX,controller.dualsenseCurInputState.AngularVelocityY,controller.dualsenseCurInputState.AngularVelocityZ };
 
-				state.acceleration.x = static_cast<float>(round(controller.dualsenseCurInputState.AccelerometerX) / 9000.0f);
-				state.acceleration.y = static_cast<float>(round(controller.dualsenseCurInputState.AccelerometerY) / 4000.0f) - 1.000000;
-				state.acceleration.z = static_cast<float>(round(controller.dualsenseCurInputState.AccelerometerZ) / 9000.0f);
+				accel = Vec3Normalize(accel);
 
-				state.angularVelocity.x = static_cast<float>(round(controller.dualsenseCurInputState.AngularVelocityX) / 900.0f);
-				state.angularVelocity.y = static_cast<float>(round(controller.dualsenseCurInputState.AngularVelocityY) / 400.0f);
-				state.angularVelocity.z = static_cast<float>(round(controller.dualsenseCurInputState.AngularVelocityZ) / 2500.0f);
+				state.acceleration.x = accel.x;
+				state.acceleration.y = accel.y;
+				state.acceleration.z = accel.z;
+
+				state.angularVelocity.x = controller.dualsenseCurInputState.AngularVelocityX * angVelScale;
+				state.angularVelocity.y = controller.dualsenseCurInputState.AngularVelocityY * angVelScale;
+				state.angularVelocity.z = controller.dualsenseCurInputState.AngularVelocityZ * angVelScale;
 
 				state.angularVelocity.x = controller.velocityDeadband == true && (state.angularVelocity.x < ANGULAR_VELOCITY_DEADBAND_MIN && state.angularVelocity.x > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : state.angularVelocity.x;
 				state.angularVelocity.y = controller.velocityDeadband == true && (state.angularVelocity.y < ANGULAR_VELOCITY_DEADBAND_MIN && state.angularVelocity.y > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : state.angularVelocity.y;
 				state.angularVelocity.z = controller.velocityDeadband == true && (state.angularVelocity.z < ANGULAR_VELOCITY_DEADBAND_MIN && state.angularVelocity.z > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : state.angularVelocity.z;
+
+				duaLibUtils::CalculateOrientation(state.acceleration, state.angularVelocity, controller.deltaTime, state.orientation, controller);
 			}
 		#pragma endregion
 
@@ -1370,7 +1392,7 @@ int scePadSetVibrationMode(int handle, int mode) {
 			else if (mode == SCE_PAD_RUMBLE_MODE) {
 				controller.dualsenseCurOutputState.UseRumbleNotHaptics = true;
 
-				if (controller.versionReport.FirmwareVersion >= 0x0224) {
+				if (controller.versionReport.FirmwareVersion >= 0x220) {
 					controller.dualsenseCurOutputState.EnableImprovedRumbleEmulation = true;
 				}
 				else {
@@ -1446,77 +1468,78 @@ int scePadClose(int handle) {
 	return SCE_PAD_ERROR_INVALID_HANDLE;
 }
 
-//int main() {
-//	if (scePadInit() != SCE_OK) {
-//		std::cout << "Failed to initalize!" << std::endl;
-//	}
-//
-//	//int handle = scePadOpen(1, NULL, NULL, NULL);
-//	int handle = scePadOpen(1, 0, 0, 0);
-//	int handle2 = scePadOpen(2, 0, 0, 0);
-//	int handle3 = scePadOpen(3, 0, 0, 0);
-//	int handle4 = scePadOpen(4, 0, 0, 0);
-//	//int handle2 = scePadOpen(2, 0, 0, 0);
-//
-//	std::cout << handle << std::endl;
-//	getchar();
-//	s_SceLightBar l = {};
-//	l.g = 255;
-//	scePadSetLightBar(handle, &l);
-//	scePadSetAudioOutPath(handle, SCE_PAD_AUDIO_PATH_ONLY_SPEAKER);
-//
-//	ScePadTriggerEffectParam trigger = {};
-//	trigger.triggerMask = SCE_PAD_TRIGGER_EFFECT_TRIGGER_MASK_L2 | SCE_PAD_TRIGGER_EFFECT_TRIGGER_MASK_R2;
-//	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].mode = ScePadTriggerEffectMode::SCE_PAD_TRIGGER_EFFECT_MODE_MULTIPLE_POSITION_VIBRATION;
-//	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[0] = 0;
-//	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[1] = 8;
-//	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[2] = 0;
-//	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[3] = 8;
-//	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[4] = 0;
-//	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[5] = 8;
-//	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[6] = 0;
-//	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[7] = 8;
-//	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[8] = 0;
-//	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[9] = 8;
-//	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.frequency = 15;
-//
-//	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_R2].mode = ScePadTriggerEffectMode::SCE_PAD_TRIGGER_EFFECT_MODE_WEAPON;
-//	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_R2].commandData.weaponParam.startPosition = 5;
-//	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_R2].commandData.weaponParam.endPosition = 6;
-//	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_R2].commandData.weaponParam.strength = 8;
-//
-//	scePadSetTriggerEffect(handle, &trigger);
-//
-//	s_ScePadInfo info;
-//	scePadGetControllerInformation(handle, &info);
-//
-//	ScePadTriggerEffectParam trigger2 = {};
-//	trigger2.triggerMask = SCE_PAD_TRIGGER_EFFECT_TRIGGER_MASK_L2;
-//	trigger2.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].mode = ScePadTriggerEffectMode::SCE_PAD_TRIGGER_EFFECT_MODE_WEAPON;
-//	trigger2.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.weaponParam.startPosition = 2;
-//	trigger2.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.weaponParam.endPosition = 7;
-//	trigger2.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.weaponParam.strength = 7;
-//
-//	scePadSetAngularVelocityDeadbandState(handle, true);
-//	scePadSetMotionSensorState(handle, true);
-//	scePadSetVibrationMode(handle, SCE_PAD_RUMBLE_MODE);
-//	scePadSetAudioOutPath(handle, SCE_PAD_AUDIO_PATH_ONLY_SPEAKER);
-//	s_ScePadVolumeGain volume = {};
-//	volume.speakerVolume = 20;
-//	volume.micGain = 64;
-//	scePadSetVolumeGain(handle, &volume);
-//
-//	while (true) {
-//		//uint8_t state[2] = {};
-//		//scePadGetTriggerEffectState(handle, state);
-//		//std::cout << (int)state[1] << "\r" << std::flush;
-//		s_ScePadData data = {};
-//		scePadReadState(handle, &data);
-//		std::cout << data.angularVelocity.z << std::endl;
-//	}
-//
-//	getchar();
-//
-//	scePadTerminate();
-//	return 0;
-//}
+int main() {
+	if (scePadInit() != SCE_OK) {
+		std::cout << "Failed to initalize!" << std::endl;
+	}
+
+	//int handle = scePadOpen(1, NULL, NULL, NULL);
+	int handle = scePadOpen(1, 0, 0);
+	//int handle2 = scePadOpen(2, 0, 0);
+	//int handle3 = scePadOpen(3, 0, 0);
+	//int handle4 = scePadOpen(4, 0, 0);
+	//int handle2 = scePadOpen(2, 0, 0, 0);
+
+	std::cout << handle << std::endl;
+	getchar();
+	s_SceLightBar l = {};
+	l.g = 255;
+	scePadSetLightBar(handle, &l);
+	scePadSetAudioOutPath(handle, SCE_PAD_AUDIO_PATH_ONLY_SPEAKER);
+
+	ScePadTriggerEffectParam trigger = {};
+	trigger.triggerMask = SCE_PAD_TRIGGER_EFFECT_TRIGGER_MASK_L2 | SCE_PAD_TRIGGER_EFFECT_TRIGGER_MASK_R2;
+	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].mode = ScePadTriggerEffectMode::SCE_PAD_TRIGGER_EFFECT_MODE_MULTIPLE_POSITION_VIBRATION;
+	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[0] = 0;
+	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[1] = 8;
+	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[2] = 0;
+	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[3] = 8;
+	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[4] = 0;
+	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[5] = 8;
+	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[6] = 0;
+	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[7] = 8;
+	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[8] = 0;
+	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.amplitude[9] = 8;
+	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.multiplePositionVibrationParam.frequency = 15;
+
+	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_R2].mode = ScePadTriggerEffectMode::SCE_PAD_TRIGGER_EFFECT_MODE_WEAPON;
+	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_R2].commandData.weaponParam.startPosition = 5;
+	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_R2].commandData.weaponParam.endPosition = 6;
+	trigger.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_R2].commandData.weaponParam.strength = 8;
+
+	scePadSetTriggerEffect(handle, &trigger);
+
+	s_ScePadInfo info;
+	scePadGetControllerInformation(handle, &info);
+
+	ScePadTriggerEffectParam trigger2 = {};
+	trigger2.triggerMask = SCE_PAD_TRIGGER_EFFECT_TRIGGER_MASK_L2;
+	trigger2.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].mode = ScePadTriggerEffectMode::SCE_PAD_TRIGGER_EFFECT_MODE_WEAPON;
+	trigger2.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.weaponParam.startPosition = 2;
+	trigger2.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.weaponParam.endPosition = 7;
+	trigger2.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.weaponParam.strength = 7;
+
+	scePadSetAngularVelocityDeadbandState(handle, false);
+	scePadSetMotionSensorState(handle, true);
+	scePadSetVibrationMode(handle, SCE_PAD_RUMBLE_MODE);
+	scePadSetAudioOutPath(handle, SCE_PAD_AUDIO_PATH_ONLY_SPEAKER);
+	s_ScePadVolumeGain volume = {};
+	volume.speakerVolume = 20;
+	volume.micGain = 64;
+	scePadSetVolumeGain(handle, &volume);
+
+	while (true) {
+		//uint8_t state[2] = {};
+		//scePadGetTriggerEffectState(handle, state);
+		//std::cout << (int)state[1] << "\r" << std::flush;
+		s_ScePadData data = {};
+		scePadReadState(handle, &data);
+		std::cout << data.orientation.x << "\r" << std::flush;
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	}
+
+	getchar();
+
+	scePadTerminate();
+	return 0;
+}
