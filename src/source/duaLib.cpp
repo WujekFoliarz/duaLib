@@ -1440,6 +1440,7 @@ int scePadClose(int handle) {
 	return SCE_PAD_ERROR_INVALID_HANDLE;
 }
 
+#if COMPILE_TO_EXE
 int main() {
 	if (scePadInit() != SCE_OK) {
 		std::cout << "Failed to initalize!" << std::endl;
@@ -1522,3 +1523,4 @@ int main() {
 	scePadTerminate();
 	return 0;
 }
+#endif

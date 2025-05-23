@@ -9,8 +9,15 @@ find_package(Threads REQUIRED)
 
 file(GLOB_RECURSE MY_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp")
 
+set(COMPILE_TO_EXE OFF CACHE BOOL "Compile to exe") # Delete the out folder when you change this
+
+if(COMPILE_TO_EXE)
 add_executable(${PROJECT_NAME} ${MY_SOURCES})
-#add_library(${PROJECT_NAME} SHARED ${MY_SOURCES})
+target_compile_definitions(duaLib PUBLIC COMPILE_TO_EXE=1)
+else()
+add_library(${PROJECT_NAME} SHARED ${MY_SOURCES})
+target_compile_definitions(duaLib PUBLIC COMPILE_TO_EXE=0)
+endif()
 
 target_include_directories(${PROJECT_NAME}
   PUBLIC
