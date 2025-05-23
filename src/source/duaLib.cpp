@@ -42,7 +42,7 @@
 #define UNKNOWN 0
 #define DUALSHOCK4 1
 #define DUALSENSE 2
-#define ANGULAR_VELOCITY_DEADBAND_MIN 0.0200000
+#define ANGULAR_VELOCITY_DEADBAND_MIN 0.017453292
 
 namespace duaLibUtils {
 
@@ -267,7 +267,7 @@ namespace duaLibUtils {
 		bool velocityDeadband = false;
 		bool motionSensorState = true;
 		bool tiltCorrection = false;
-		s_SceFQuaternion orientation = {1.0f,1.0f,1.0f,1.0f };
+		s_SceFQuaternion orientation = {0.0f,0.0f,0.0f,1.0f };
 		float eInt[3] = { 0.0f, 0.0f, 0.0f };
 		std::chrono::steady_clock::time_point lastUpdate = {};
 		float deltaTime = 0.0f;
@@ -894,7 +894,6 @@ int scePadReadState(int handle, s_ScePadData* data) {
 				accel.x = (float)controller.dualsenseCurInputState.AccelerometerX;
 				accel.y = (float)controller.dualsenseCurInputState.AccelerometerY;
 				accel.z = (float)controller.dualsenseCurInputState.AccelerometerZ;
-				//s_SceFVector3 angular = { controller.dualsenseCurInputState.AngularVelocityX,controller.dualsenseCurInputState.AngularVelocityY,controller.dualsenseCurInputState.AngularVelocityZ };
 
 				accel = Vec3Normalize(accel);
 
@@ -910,7 +909,34 @@ int scePadReadState(int handle, s_ScePadData* data) {
 				state.angularVelocity.y = controller.velocityDeadband == true && (state.angularVelocity.y < ANGULAR_VELOCITY_DEADBAND_MIN && state.angularVelocity.y > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : state.angularVelocity.y;
 				state.angularVelocity.z = controller.velocityDeadband == true && (state.angularVelocity.z < ANGULAR_VELOCITY_DEADBAND_MIN && state.angularVelocity.z > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : state.angularVelocity.z;
 
-				duaLibUtils::CalculateOrientation(state.acceleration, state.angularVelocity, controller.deltaTime, state.orientation, controller);
+				struct Quat { float x, y, z, w; };
+				auto& q = controller.orientation;
+				Quat ω = { state.angularVelocity.x,
+						   state.angularVelocity.y,
+						   state.angularVelocity.z,
+						   0.0f };
+
+				Quat qω = {
+				  q.w * ω.x + q.x * ω.w + q.y * ω.z - q.z * ω.y,
+				  q.w * ω.y + q.y * ω.w + q.z * ω.x - q.x * ω.z,
+				  q.w * ω.z + q.z * ω.w + q.x * ω.y - q.y * ω.x,
+				  q.w * ω.w - q.x * ω.x - q.y * ω.y - q.z * ω.z
+				};
+
+				Quat qDot = { 0.5f * qω.x, 0.5f * qω.y, 0.5f * qω.z, 0.5f * qω.w };
+
+				q.x += qDot.x * controller.deltaTime;
+				q.y += qDot.y * controller.deltaTime;
+				q.z += qDot.z * controller.deltaTime;
+				q.w += qDot.w * controller.deltaTime;
+
+				float norm = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+				q.x /= norm; q.y /= norm; q.z /= norm; q.w /= norm;
+
+				state.orientation.x = q.x;
+				state.orientation.y = q.y;
+				state.orientation.z = q.z;
+				state.orientation.w = q.w;
 			}
 		#pragma endregion
 
@@ -1283,7 +1309,7 @@ int scePadResetOrientation(int handle) {
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
 
-		controller.orientation = {0};
+		controller.orientation = {0.0f,0.0f,0.0f,1.0f};
 
 		return SCE_OK;
 	}
@@ -1522,7 +1548,7 @@ int main() {
 	trigger2.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.weaponParam.endPosition = 7;
 	trigger2.command[SCE_PAD_TRIGGER_EFFECT_PARAM_INDEX_FOR_L2].commandData.weaponParam.strength = 7;
 
-	scePadSetAngularVelocityDeadbandState(handle, false);
+	scePadSetAngularVelocityDeadbandState(handle, true);
 	scePadSetMotionSensorState(handle, true);
 	scePadSetVibrationMode(handle, SCE_PAD_RUMBLE_MODE);
 	scePadSetAudioOutPath(handle, SCE_PAD_AUDIO_PATH_ONLY_SPEAKER);
@@ -1531,14 +1557,21 @@ int main() {
 	volume.micGain = 64;
 	scePadSetVolumeGain(handle, &volume);
 
+	s_ScePadData lastData = {};
 	while (true) {
 		//uint8_t state[2] = {};
 		//scePadGetTriggerEffectState(handle, state);
 		//std::cout << (int)state[1] << "\r" << std::flush;
 		s_ScePadData data = {};
 		scePadReadState(handle, &data);
-		std::cout << data.orientation.x << "\r" << std::flush;
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		std::cout << data.orientation.y << "\r" << std::flush;
+
+		if (data.bitmask_buttons & SCE_BM_CROSS && lastData.bitmask_buttons ^ SCE_BM_CROSS) {
+			scePadResetOrientation(handle);
+		}
+
+		lastData = data;
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 
 	getchar();
