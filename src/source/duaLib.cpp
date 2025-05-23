@@ -272,66 +272,6 @@ namespace duaLibUtils {
 		std::chrono::steady_clock::time_point lastUpdate = {};
 		float deltaTime = 0.0f;
 	};
-
-	// https://github.com/shadps4-emu/shadPS4/blob/main/src/input/controller.cpp#L174
-	const float Kp = 50.0f;
-	const float Ki = 1.0f;
-	void CalculateOrientation(s_SceFVector3& acceleration, s_SceFVector3& angularVelocity, float deltaTime, s_SceFQuaternion& orientation, controller& ctr) {
-		float ax = acceleration.x, ay = acceleration.y, az = acceleration.z;
-		float gx = angularVelocity.x, gy = angularVelocity.y, gz = angularVelocity.z;
-
-		float q1 = ctr.orientation.w, q2 = ctr.orientation.x, q3 = ctr.orientation.y, q4 = ctr.orientation.z;
-
-		// Normalize accelerometer measurement
-		float norm = std::sqrt(ax * ax + ay * ay + az * az);
-		if (norm == 0.0f || deltaTime == 0.0f)
-			return; // Handle NaN
-		norm = 1.0f / norm;
-		ax *= norm;
-		ay *= norm;
-		az *= norm;
-
-		// Estimated direction of gravity
-		float vx = 2.0f * (q2 * q4 - q1 * q3);
-		float vy = 2.0f * (q1 * q2 + q3 * q4);
-		float vz = q1 * q1 - q2 * q2 - q3 * q3 + q4 * q4;
-
-		// Error is cross product between estimated direction and measured direction of gravity
-		float ex = (ay * vz - az * vy);
-		float ey = (az * vx - ax * vz);
-		float ez = (ax * vy - ay * vx);
-		if (Ki > 0.0f) {
-			ctr.eInt[0] += ex * deltaTime; // Accumulate integral error
-			ctr.eInt[1] += ey * deltaTime;
-			ctr.eInt[2] += ez * deltaTime;
-		}
-		else {
-			ctr.eInt[0] = ctr.eInt[1] = ctr.eInt[2] = 0.0f; // Prevent integral wind-up
-		}
-
-		// Apply feedback terms
-		gx += Kp * ex + Ki * ctr.eInt[0];
-		gy += Kp * ey + Ki * ctr.eInt[1];
-		gz += Kp * ez + Ki * ctr.eInt[2];
-
-		//// Integrate rate of change of quaternion
-		q1 += (-q2 * gx - q3 * gy - q4 * gz) * (0.5f * deltaTime);
-		q2 += (q1 * gx + q3 * gz - q4 * gy) * (0.5f * deltaTime);
-		q3 += (q1 * gy - q2 * gz + q4 * gx) * (0.5f * deltaTime);
-		q4 += (q1 * gz + q2 * gy - q3 * gx) * (0.5f * deltaTime);
-
-		// Normalize quaternion
-		norm = std::sqrt(q1 * q1 + q2 * q2 + q3 * q3 + q4 * q4);
-		norm = 1.0f / norm;
-		orientation.w = q1 * norm;
-		orientation.x = q2 * norm;
-		orientation.y = q3 * norm;
-		orientation.z = q4 * norm;
-		ctr.orientation.w = q1 * norm;
-		ctr.orientation.x = q2 * norm;
-		ctr.orientation.y = q3 * norm;
-		ctr.orientation.z = q4 * norm;
-	}
 }
 
 struct device {
@@ -961,6 +901,9 @@ int scePadReadState(int handle, s_ScePadData* data) {
 				state.deviceUniqueData[j] = {};
 			state.deviceUniqueDataLen = sizeof(state.deviceUniqueData);
 		#pragma endregion
+		}
+		else if (controller.deviceType == DUALSHOCK4) {
+		#pragma region  
 		}
 
 		*data = state;
