@@ -1447,6 +1447,9 @@ int scePadGetJackState(int handle, int* state) {
 		if (controller.deviceType == DUALSENSE) {
 			*state = controller.dualsenseCurInputState.PluggedHeadphones + controller.dualsenseCurInputState.PluggedMic;
 		}
+		else if (controller.deviceType == DUALSHOCK4) {
+			*state = controller.dualshock4CurInputState.PluggedHeadphones + controller.dualshock4CurInputState.PluggedMic;
+		}
 
 		return SCE_OK;
 	}
