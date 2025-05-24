@@ -1,4 +1,5 @@
-﻿cmake_minimum_required(VERSION 3.10...3.31)
+﻿
+cmake_minimum_required(VERSION 3.10...3.31)
 project(duaLib LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -19,6 +20,7 @@ add_library(${PROJECT_NAME} SHARED ${MY_SOURCES})
 target_compile_definitions(duaLib PUBLIC COMPILE_TO_EXE=0)
 endif()
 
+set_target_properties(duaLib PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(${PROJECT_NAME}
   PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
