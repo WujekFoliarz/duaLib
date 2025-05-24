@@ -1384,9 +1384,8 @@ int scePadGetControllerBusType(int handle, int* busType) {
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
 
-		if (controller.deviceType == DUALSENSE) {
-			*busType = controller.connectionType;
-		}
+		*busType = controller.connectionType;
+
 		return SCE_OK;
 	}
 	return SCE_PAD_ERROR_INVALID_HANDLE;
