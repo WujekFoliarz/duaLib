@@ -470,12 +470,12 @@ namespace dualshock4Data {
 	};
 
 	struct USBGetStateData : GetStateData {
-		TouchData TouchData[3];
+		TouchData touchData[3];
 		uint8_t Pad[3];
 	};
 
 	struct BTGetStateData : GetStateData {
-		TouchData TouchData[4];
+		TouchData touchData[4];
 		uint8_t Pad[6];
 	};
 

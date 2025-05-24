@@ -1210,13 +1210,13 @@ int scePadReadState(int handle, s_ScePadData* data) {
 		#pragma region touchpad
 			state.touchData.touchNum = controller.dualsenseCurInputState.touchData.Timestamp;
 
-			state.touchData.touch[0].id = controller.dualshock4CurInputState.TouchData[0].Finger[0].Index;
-			state.touchData.touch[0].x = controller.dualshock4CurInputState.TouchData[0].Finger[0].FingerX;
-			state.touchData.touch[0].y = controller.dualshock4CurInputState.TouchData[0].Finger[0].FingerY;
+			state.touchData.touch[0].id = controller.dualshock4CurInputState.touchData[0].Finger[0].Index;
+			state.touchData.touch[0].x = controller.dualshock4CurInputState.touchData[0].Finger[0].FingerX;
+			state.touchData.touch[0].y = controller.dualshock4CurInputState.touchData[0].Finger[0].FingerY;
 
-			state.touchData.touch[1].id = controller.dualshock4CurInputState.TouchData[0].Finger[1].Index;
-			state.touchData.touch[1].x = controller.dualshock4CurInputState.TouchData[0].Finger[1].FingerX;
-			state.touchData.touch[1].y = controller.dualshock4CurInputState.TouchData[0].Finger[1].FingerY;
+			state.touchData.touch[1].id = controller.dualshock4CurInputState.touchData[0].Finger[1].Index;
+			state.touchData.touch[1].x = controller.dualshock4CurInputState.touchData[0].Finger[1].FingerX;
+			state.touchData.touch[1].y = controller.dualshock4CurInputState.touchData[0].Finger[1].FingerY;
 		#pragma endregion
 
 		#pragma region misc
