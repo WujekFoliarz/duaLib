@@ -4,20 +4,39 @@
 // Source https://controllers.fandom.com/wiki/Sony_DualSense
 //		  https://controllers.fandom.com/wiki/Sony_DualShock_4
 
+#pragma pack(push, 1)
+enum class Direction : uint8_t {
+	North,
+	NorthEast,
+	East,
+	SouthEast,
+	South,
+	SouthWest,
+	West,
+	NorthWest,
+	None
+};
+
+template<int N> struct BTCRC {
+	uint8_t Buff[N - 4];
+	uint32_t CRC;
+};
+
+struct TouchFingerData {
+	uint32_t Index : 7;
+	uint32_t NotTouching : 1;
+	uint32_t FingerX : 12;
+	uint32_t FingerY : 12;
+};
+
+struct TouchData {
+	uint8_t Timestamp;
+	TouchFingerData Finger[2];
+};
+#pragma pop(pack)
+
 namespace dualsenseData {
 #pragma pack(push, 1)
-	enum class Direction : uint8_t {
-		North,
-		NorthEast,
-		East,
-		SouthEast,
-		South,
-		SouthWest,
-		West,
-		NorthWest,
-		None
-	};
-
 	enum class PowerState : uint8_t {
 		Discharging = 0x00, // Use PowerPercent
 		Charging = 0x01, // Use PowerPercent
@@ -54,11 +73,6 @@ namespace dualsenseData {
 		Nothing,
 		FadeIn, // from black to blue
 		FadeOut // from blue to black
-	};
-
-	template<int N> struct BTCRC {
-		uint8_t Buff[N - 4];
-		uint32_t CRC;
 	};
 
 	struct ReportFeatureInMacAll {
@@ -102,18 +116,6 @@ namespace dualsenseData {
 				// May be Memory Control Unit for Non Volatile Storage
 			};
 		};
-	};
-
-	struct TouchFingerData { // 4
-		/*0.0*/ uint32_t Index : 7;
-		/*0.7*/ uint32_t NotTouching : 1;
-		/*1.0*/ uint32_t FingerX : 12;
-		/*2.4*/ uint32_t FingerY : 12;
-	};
-
-	struct TouchData { // 9
-		/*0*/ TouchFingerData Finger[2];
-		/*8*/ uint8_t Timestamp;
 	};
 
 	struct BTSimpleGetStateData { // 9
@@ -229,7 +231,7 @@ namespace dualsenseData {
 
 	struct ReportIn01BT {
 		uint8_t ReportID = 0x01;
-		BTSimpleGetStateData State;
+		USBGetStateData State;
 	};
 
 	struct SetStateData { // 47
@@ -412,7 +414,232 @@ namespace dualsenseData {
 }
 
 namespace dualshock4Data {
+#pragma pack(push, 1)
+	template<int N> struct BTAudio {
+		uint16_t FrameNumber;
+		uint8_t AudioTarget; // 0x02 speaker?, 0x24 headset?, 0x03 mic?
+		uint8_t SBCData[N - 3];
+	};
 
+	struct BasicGetStateData {
+		/*0  */ uint8_t LeftStickX;
+		/*1  */ uint8_t LeftStickY;
+		/*2  */ uint8_t RightStickX;
+		/*3  */ uint8_t RightStickY;
+		/*4.0*/ Direction DPad : 4;
+		/*4.4*/ uint8_t ButtonSquare : 1;
+		/*4.5*/ uint8_t ButtonCross : 1;
+		/*4.6*/ uint8_t ButtonCircle : 1;
+		/*4.7*/ uint8_t ButtonTriangle : 1;
+		/*5.0*/ uint8_t ButtonL1 : 1;
+		/*5.1*/ uint8_t ButtonR1 : 1;
+		/*5.2*/ uint8_t ButtonL2 : 1;
+		/*5.3*/ uint8_t ButtonR2 : 1;
+		/*5.4*/ uint8_t ButtonShare : 1;
+		/*5.5*/ uint8_t ButtonOptions : 1;
+		/*5.6*/ uint8_t ButtonL3 : 1;
+		/*5.7*/ uint8_t ButtonR3 : 1;
+		/*6.0*/ uint8_t ButtonHome : 1;
+		/*6.1*/ uint8_t ButtonPad : 1;
+		/*6.2*/ uint8_t Counter : 6; // always 0 on USB, counts up with some skips on BT
+		/*7  */ uint8_t TriggerLeft;
+		/*8  */ uint8_t TriggerRight;
+	};
+
+	struct GetStateData : BasicGetStateData {
+		/* 9  */ uint16_t Timestamp; // in 5.33us units?
+		/*11  */ uint8_t Temperture;
+		/*12  */ int16_t AngularVelocityX;
+		/*14  */ int16_t AngularVelocityZ;
+		/*16  */ int16_t AngularVelocityY;
+		/*18  */ int16_t AccelerometerX;
+		/*20  */ int16_t AccelerometerY;
+		/*22  */ int16_t AccelerometerZ;
+		/*24  */ uint8_t ExtData[5]; // range can be set by EXT device
+		/*29  */ uint8_t PowerPercent : 4; // 0x00-0x0A or 0x01-0x0B if plugged int
+		/*29.4*/ uint8_t PluggedPowerCable : 1;
+		/*29.5*/ uint8_t PluggedHeadphones : 1;
+		/*29.6*/ uint8_t PluggedMic : 1;
+		/*29,7*/ uint8_t PluggedExt : 1;
+		/*30.0*/ uint8_t UnkExt1 : 1; // ExtCapableOfExtraData?
+		/*30.1*/ uint8_t UnkExt2 : 1; // ExtHasExtraData?
+		/*30.2*/ uint8_t NotConnected : 1; // Used by dongle to indicate no controller
+		/*30.3*/ uint8_t Unk1 : 5;
+		/*31  */ uint8_t Unk2; // unused?
+		/*32  */ uint8_t TouchCount;
+	};
+
+	struct USBGetStateData : GetStateData {
+		TouchData TouchData[3];
+		uint8_t Pad[3];
+	};
+
+	struct BTGetStateData : GetStateData {
+		TouchData TouchData[4];
+		uint8_t Pad[6];
+	};
+
+	struct ReportIn01USB {
+		uint8_t ReportID; // 0x01
+		USBGetStateData State = {};
+	};
+
+	struct ReportIn01BT {
+		uint8_t ReportID; // 0x01
+		uint8_t padding : 8;
+		uint8_t padding2 : 4;
+		USBGetStateData State = {};
+	};
+
+	struct ReportFeature {
+		uint8_t flag1 : 4;
+		uint8_t flag2 : 1;
+		uint8_t flag3 : 1;
+		uint8_t flag4 : 2;
+		uint8_t reportId;
+		uint16_t buff;
+	};
+
+	struct BTSetStateData {
+		uint8_t EnableRumbleUpdate : 1;
+		uint8_t EnableLedUpdate : 1;
+		uint8_t EnableLedBlink : 1;
+		uint8_t EnableExtWrite : 1;
+		uint8_t EnableVolumeLeftUpdate : 1;
+		uint8_t EnableVolumeRightUpdate : 1;
+		uint8_t EnableVolumeMicUpdate : 1;
+		uint8_t EnableVolumeSpeakerUpdate : 1;
+		uint8_t UNK_RESET1 : 1; // unknown reset, both set high by Remote Play
+		uint8_t UNK_RESET2 : 1; // unknown reset, both set high by Remote Play
+		uint8_t UNK1 : 1;
+		uint8_t UNK2 : 1;
+		uint8_t UNK3 : 1;
+		uint8_t UNKPad : 3;
+		uint8_t Empty1;
+		uint8_t RumbleRight; // weak
+		uint8_t RumbleLeft; // strong
+		uint8_t LedRed;
+		uint8_t LedGreen;
+		uint8_t LedBlue;
+		uint8_t LedFlashOnPeriod;
+		uint8_t LedFlashOffPeriod;
+		uint8_t ExtDataSend[8]; // sent to I2C EXT port, stored in 8x8 byte block
+		uint8_t VolumeLeft; // 0x00 - 0x4F inclusive
+		uint8_t VolumeRight; // 0x00 - 0x4F inclusive
+		uint8_t VolumeMic; // 0x00, 0x01 - 0x40 inclusive (0x00 is special behavior)
+		uint8_t VolumeSpeaker; // 0x00 - 0x4F
+		uint8_t UNK_AUDIO1 : 7; // clamped to 1-64 inclusive, appears to be set to 5 for audio
+		uint8_t UNK_AUDIO2 : 1; // unknown, appears to be set to 1 for audio
+		uint8_t Pad[52];
+
+		bool operator==(const BTSetStateData& other) const {
+			return
+				LedRed == other.LedRed &&
+				LedGreen == other.LedGreen &&
+				LedBlue == other.LedBlue &&
+				RumbleLeft == other.RumbleLeft &&
+				RumbleRight == other.RumbleRight &&
+				VolumeSpeaker == other.VolumeSpeaker &&
+				VolumeMic == other.VolumeMic &&
+				VolumeLeft == other.VolumeLeft &&
+				VolumeRight == other.VolumeRight;
+		}
+
+		bool operator!=(const BTSetStateData& other) const {
+			return !(*this == other);
+		}
+	};
+
+	template<int N> struct BTSetStateDataAndAudio {
+		BTSetStateData State;
+		BTAudio<N - 75> Audio;
+	};
+
+	struct ReportIn05 {
+		uint8_t ReportID; // 0x05
+		BTSetStateData State;
+	};
+
+	struct ReportIn11 {
+		uint8_t flag1;
+		uint8_t flag2;
+		uint8_t flag3;
+		uint8_t ReportID; // 0x11
+		BTSetStateData State;
+	};
+
+	struct ReportOut11 {
+		union {
+			BTCRC<78> CRC;
+			struct {
+				uint8_t ReportID; // 0x11
+				uint8_t PollingRate : 6; // note 0 appears to be clamped to 1
+				uint8_t EnableCRC : 1;
+				uint8_t EnableHID : 1;
+				uint8_t EnableMic : 3; // somehow enables mic, appears to be 3 bit flags
+				uint8_t UnkA4 : 1;
+				uint8_t AllowRed : 1;
+				uint8_t AllowBlue : 1; // seems to always be 1
+				uint8_t AllowGreen : 1;
+				uint8_t EnableAudio : 1;
+				union {
+					BTSetStateData State;
+				};
+			} Data;
+		};
+	};
+
+	struct ReportOut15 {
+		union {
+			BTCRC<334> CRC;
+			struct {
+				uint8_t ReportID; // 0x15
+				uint8_t PollingRate : 6; // note 0 appears to be clamped to 1
+				uint8_t EnableCRC : 1;
+				uint8_t EnableHID : 1;
+				uint8_t EnableMic : 3; // somehow enables mic, appears to be 3 bit flags
+				uint8_t UnkA4 : 1;
+				uint8_t UnkB1 : 1;
+				uint8_t UnkB2 : 1; // seems to always be 1
+				uint8_t UnkB3 : 1;
+				uint8_t EnableAudio : 1;
+				union {
+					BTSetStateDataAndAudio<331> State;
+					BTAudio<331> Audio;
+				};
+			} Data;
+		};
+	};
+
+	struct ReportFeatureInMacAll {
+		uint8_t ReportID; // 0x12 (0x09 for BT)
+		uint8_t ClientMac[6]; // Right to Left
+		uint8_t Hard08;
+		uint8_t Hard25;
+		uint8_t Hard00;
+		uint8_t HostMac[6]; // Right to Left
+	};
+
+	struct ReportFeatureInMacAllBT {
+		union {
+			BTCRC<53> CRC;
+			ReportFeatureInMacAll Data; // with ReportID 0x09
+		};
+	};
+
+	enum AudioOutput : uint8_t {
+		HeadsetStereo = 0,  // Left and Right to headphones
+		HeadsetMono,        // Left to headphones
+		HeadsetMonoSpeaker, // Left to headphones, Right to speaker
+		Speaker,            // Right to speaker
+		Disabled = 4
+	};
+	struct ReportFeatureInDongleSetAudio {
+		uint8_t ReportID; // 0xE0
+		uint8_t Unknown; // 0x00
+		AudioOutput Output;
+	};
+#pragma pop(pack)
 }
 
 #endif // DUALIB_DATA_STRUCTURES_H

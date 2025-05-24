@@ -8,15 +8,16 @@ It aims to replicate the original library's behavior, possibly making it crosspl
 
 | Controller | USB | Bluetooth |
 | -----------|-----|-----------|
-| DualShock 4|❌|❌|
-| DualSense  |✅|✅|
+| DualShock 4|✅   |✅|
+| DualSense  |✅   |✅|
 
 | Function                                                                                  | Implementation  | Comment  |
 | -------------                                                                             | -               |------------- | 
 | int scePadInit()                                                                          |✅              |
 | int scePadOpen(int userID, int, int, void*)                                               |⚠️              | The handle numbers are not accurate to libScePad's. Probably not important though
+| int scePadClose(int userID)																|✅              | 
 | int scePadSetParticularMode(bool mode)                                                    |✅              | 
-| int scePadReadState(int handle, s_ScePadData* data)                                       |✅              | 
+| int scePadReadState(int handle, s_ScePadData* data)                                       |✅              | Big yaw drift in orientation, I recommend setting DeadbandState to true.
 | int scePadSetLightBar(int handle, s_SceLightBar* lightbar)                                |✅              |
 | int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* containerIdInfo) |⚠️              | Windows only
 | int scePadGetControllerBusType(int handle, int* busType)                                  |✅              |
@@ -50,3 +51,5 @@ It aims to replicate the original library's behavior, possibly making it crosspl
  https://www.psxhax.com/threads/prospero-directory-tree-listing-dumping-ps5-4-03-filesystem-script.12810/
 
  https://github.com/Inori/GPCS4/tree/master/GPCS4/SceModules/ScePad
+
+ https://github.com/naoki-mizuno/ds4_driver/blob/humble-devel/ds4_driver/ds4_driver/controller_ros.py#L240-L246
