@@ -15,7 +15,7 @@ git clone https://github.com/WujekFoliarz/duaLib.git --init --recursive
 ```
 ### Alternatively:
 
-Use this [header](https://github.com/WujekFoliarz/duaLib/blob/master/src/include/duaLib.h) and put compiled duaLib.dll and hidapi.dll in your out folder
+Use this [header](https://github.com/WujekFoliarz/duaLib/blob/master/src/include/duaLib.h) with duaLib.lib and put compiled duaLib.dll and hidapi.dll in your out folder
 #
 ```
 #include "duaLib.h"
