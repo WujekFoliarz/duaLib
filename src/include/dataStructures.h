@@ -33,7 +33,7 @@ struct TouchData {
 	uint8_t Timestamp;
 	TouchFingerData Finger[2];
 };
-#pragma pop(pack)
+#pragma pack(pop)
 
 namespace dualsenseData {
 #pragma pack(push, 1)
@@ -639,7 +639,7 @@ namespace dualshock4Data {
 		uint8_t Unknown; // 0x00
 		AudioOutput Output;
 	};
-#pragma pop(pack)
+#pragma pack(pop)
 }
 
 #endif // DUALIB_DATA_STRUCTURES_H
