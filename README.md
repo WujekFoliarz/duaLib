@@ -5,6 +5,7 @@ It aims to replicate the original library's behavior, possibly making it crosspl
 ### Our [discord server](https://discord.com/invite/AFYvxf282U)
 
 ## Usage
+### Cmake: 
 ```
 git submodule add https://github.com/WujekFoliarz/duaLib.git --init --recursive
 ```
@@ -12,11 +13,13 @@ or
 ```
 git clone https://github.com/WujekFoliarz/duaLib.git --init --recursive
 ```
+### Alternatively:
+
+Use this [header](https://github.com/WujekFoliarz/duaLib/blob/master/src/include/duaLib.h) and put compiled duaLib.dll and hidapi.dll in your out folder
 #
 ```
 #include "duaLib.h"
 ```
-
 ## Progress
 
 | Controller | USB | Bluetooth |
