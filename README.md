@@ -4,6 +4,19 @@ It aims to replicate the original library's behavior, possibly making it crosspl
 
 ### Our [discord server](https://discord.com/invite/AFYvxf282U)
 
+## Usage
+```
+git submodule add https://github.com/WujekFoliarz/duaLib.git --init --recursive
+```
+or
+```
+git clone https://github.com/WujekFoliarz/duaLib.git --init --recursive
+```
+#
+```
+#include "duaLib.h"
+```
+
 ## Progress
 
 | Controller | USB | Bluetooth |
