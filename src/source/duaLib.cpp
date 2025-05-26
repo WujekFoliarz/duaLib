@@ -1158,7 +1158,7 @@ int scePadReadState(int handle, s_ScePadData* data) {
 		#pragma region sticks
 			state.LeftStick.X = controller.dualshock4CurInputState.LeftStickX;
 			state.LeftStick.Y = controller.dualshock4CurInputState.LeftStickY;
-			state.RightStick.Y = controller.dualshock4CurInputState.RightStickX;
+			state.RightStick.X = controller.dualshock4CurInputState.RightStickX;
 			state.RightStick.Y = controller.dualshock4CurInputState.RightStickY;
 		#pragma endregion
 
