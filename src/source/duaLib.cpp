@@ -1043,7 +1043,7 @@ int scePadReadState(int handle, s_ScePadData* data) {
 		#pragma region sticks
 			state.LeftStick.X = controller.dualsenseCurInputState.LeftStickX;
 			state.LeftStick.Y = controller.dualsenseCurInputState.LeftStickY;
-			state.RightStick.Y = controller.dualsenseCurInputState.RightStickX;
+			state.RightStick.X = controller.dualsenseCurInputState.RightStickX;
 			state.RightStick.Y = controller.dualsenseCurInputState.RightStickY;
 		#pragma endregion
 
@@ -1808,7 +1808,6 @@ int main() {
 	int handle2 = scePadOpen(2, 0, 0);
 	//int handle3 = scePadOpen(3, 0, 0);
 	//int handle4 = scePadOpen(4, 0, 0);
-	//int handle2 = scePadOpen(2, 0, 0, 0);
 
 	std::cout << handle << std::endl;
 	//std::cout << handle2 << std::endl;
