@@ -778,6 +778,7 @@ int watchFunc() {
 									);
 								}
 								else if (controller.deviceType == DUALSENSE && info->bus_type == HID_API_BUS_BLUETOOTH) {
+									duaLibUtils::getHardwareVersion(controller.handle, controller.versionReport);
 									dualsenseData::ReportOut31 report = {};
 
 									report.Data.ReportID = 0x31;
