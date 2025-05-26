@@ -758,10 +758,9 @@ int watchFunc() {
 
 								if (dev == DUALSENSE_DEVICE_ID || dev == DUALSENSE_EDGE_DEVICE_ID) { controller.deviceType = DUALSENSE; }
 								else if (dev == DUALSHOCK4_DEVICE_ID || dev == DUALSHOCK4V2_DEVICE_ID || dev == DUALSHOCK4_WIRELESS_ADAPTOR_ID) { controller.deviceType = DUALSHOCK4; }
-
-								duaLibUtils::getHardwareVersion(controller.handle, controller.versionReport);
-
+			
 								if (controller.deviceType == DUALSENSE && (info->bus_type == HID_API_BUS_USB || info->bus_type == HID_API_BUS_UNKNOWN)) {
+									duaLibUtils::getHardwareVersion(controller.handle, controller.versionReport);
 									dualsenseData::ReportOut02 report = {};
 									report.ReportID = 0x02;
 									report.State.AllowLedColor = true;
@@ -1863,6 +1862,12 @@ int main() {
 	volume.speakerVolume = 100;
 	volume.micGain = 64;
 	//scePadSetVolumeGain(handle2, &volume);
+
+	while (true) {
+		s_ScePadData data = {};
+		scePadReadState(handle2, &data);
+		std::cout << data.bitmask_buttons << std::endl;
+	}
 
 	getchar();
 
