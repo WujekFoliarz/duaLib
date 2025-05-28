@@ -3,7 +3,9 @@
 
 #include <cstdint>
 #include <cstddef>
+#if defined(_WIN32) || defined(_WIN64)
 #include <basetsd.h>
+#endif
 
 const UINT32 hashTable[256] = {
 	0xd202ef8d, 0xa505df1b, 0x3c0c8ea1, 0x4b0bbe37, 0xd56f2b94, 0xa2681b02,
