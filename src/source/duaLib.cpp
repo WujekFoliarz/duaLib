@@ -1,5 +1,4 @@
-﻿#include <mutex>
-#include <iostream>
+﻿#include <iostream>
 #include <hidapi.h>
 #include <stdio.h>
 #include <wchar.h>
@@ -12,9 +11,10 @@
 #include <cstring>    
 #include <cmath>
 #include <shared_mutex>
+#include <fstream>
 # define M_PI 3.14159265358979323846  
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(_WIN64)
 #include <Windows.h>
 #include <setupapi.h>
 #pragma comment(lib, "setupapi.lib")
@@ -219,7 +219,7 @@ namespace duaLibUtils {
 		return false;
 	}
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(_WIN64)
 	static std::wstring Utf8ToWide(const char* utf8) {
 		int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, nullptr, 0);
 		if (wlen <= 0) return L"";
@@ -230,7 +230,7 @@ namespace duaLibUtils {
 #endif
 
 	bool GetID(const char* narrowPath, const char** ID, int* size) {
-	#ifdef _WIN32
+	#if defined(_WIN32) || defined(_WIN64)
 		GUID hidGuid;
 		GUID outContainerId;
 		HidD_GetHidGuid(&hidGuid);
@@ -314,10 +314,9 @@ namespace duaLibUtils {
 		uint8_t seqNo = 0;
 		uint8_t connectionType = 0;
 		bool opened = false;
-		bool wasMicBtnClicked = false;
 		bool isMicMuted = false;
 		bool wasDisconnected = false;
-		bool valid = true;
+		bool valid = false;
 		uint8_t failedReadCount = 0;
 		dualsenseData::USBGetStateData dualsenseCurInputState = {};
 		dualsenseData::SetStateData dualsenseLastOutputState = {};
@@ -345,6 +344,12 @@ namespace duaLibUtils {
 		float eInt[3] = { 0.0f, 0.0f, 0.0f };
 		std::chrono::steady_clock::time_point lastUpdate = {};
 		float deltaTime = 0.0f;
+		uint8_t touch1Count = 0;
+		uint8_t touch2Count = 0;
+		uint8_t touch1LastCount = 0;
+		uint8_t touch2LastCount = 0;
+		uint8_t touch1LastIndex = 0;
+		uint8_t touch2LastIndex = 0;
 	};
 }
 
@@ -379,8 +384,8 @@ constexpr std::array<s_SceLightBar, 4> g_playerColors = { {
 } };
 
 int readFunc() {
-#ifdef _WIN32
-	SetThreadPriority(GetCurrentProcess(), THREAD_PRIORITY_HIGHEST);
+#if defined(_WIN32) || defined(_WIN64)
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 #endif
 
 	while (g_threadRunning) {
@@ -398,12 +403,11 @@ int readFunc() {
 
 				int32_t res = -1;
 
-				if (isBt) {
-					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt));
-				}
-				else {
+				if (isBt)
+					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt));			
+				else 
 					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb));
-				}
+				
 
 				dualsenseData::USBGetStateData inputData = isBt ? inputBt.Data.State.StateData : inputUsb.State;
 
@@ -417,6 +421,17 @@ int readFunc() {
 				}
 				else if (res > 0) {
 					controller.failedReadCount = 0;
+
+					if (!inputData.ButtonMute && controller.dualsenseCurInputState.ButtonMute) {
+						controller.isMicMuted = !controller.isMicMuted;
+						controller.dualsenseCurOutputState.MuteLightMode = controller.isMicMuted ? dualsenseData::MuteLight::On : dualsenseData::MuteLight::Off;
+						controller.dualsenseCurOutputState.MicMute = controller.isMicMuted;
+						controller.dualsenseCurOutputState.AllowMuteLight = true;
+
+					}
+					else {
+						controller.dualsenseCurOutputState.AllowMuteLight = false;
+					}
 
 					if (controller.dualsenseCurOutputState.LedRed != controller.dualsenseLastOutputState.LedRed ||
 						controller.dualsenseCurOutputState.LedGreen != controller.dualsenseLastOutputState.LedGreen ||
@@ -471,20 +486,6 @@ int readFunc() {
 					}
 					else {
 						controller.dualsenseCurOutputState.AllowPlayerIndicators = false;
-					}
-
-					if (!inputData.ButtonMute && controller.dualsenseCurInputState.ButtonMute) {
-						controller.isMicMuted = !controller.isMicMuted;
-						controller.dualsenseCurOutputState.MuteLightMode = controller.isMicMuted ? dualsenseData::MuteLight::On : dualsenseData::MuteLight::Off;
-						controller.dualsenseCurOutputState.MicMute = controller.isMicMuted;
-						controller.dualsenseCurOutputState.AllowMuteLight = true;
-						if (isBt) { // mic led won't change without these on bluetooth
-							controller.dualsenseCurOutputState.AllowLedColor = true;
-							controller.dualsenseCurOutputState.AllowPlayerIndicators = true;
-						}
-					}
-					else {
-						controller.dualsenseCurOutputState.AllowMuteLight = false;
 					}
 
 					if (controller.wasDisconnected) {
@@ -572,12 +573,12 @@ int readFunc() {
 						}
 					}
 
-					if (res > 0) {
-						controller.dualsenseLastOutputState = controller.dualsenseCurOutputState;
+					if (res > 0) {				
 						controller.wasDisconnected = false;
 						//std::cout << "Controller idx " << controller.sceHandle << " path=" << controller.macAddress << " connType=" << (int)controller.connectionType << std::endl;
 					}
 
+					controller.dualsenseLastOutputState = controller.dualsenseCurOutputState;
 					controller.dualsenseCurInputState = inputData;
 				}
 			}
@@ -589,7 +590,7 @@ int readFunc() {
 				dualshock4Data::ReportIn01BT inputBt = {};
 
 				int res = -1;
-				if(isBt)				
+				if (isBt)
 					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt));
 				else
 					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb));
@@ -666,7 +667,7 @@ int readFunc() {
 						report.Data.AllowBlue = controller.dualshock4CurOutputState.LedBlue > 0 ? 1 : 0;
 						report.Data.EnableAudio = 0;
 						report.Data.State = controller.dualshock4CurOutputState;
-							
+
 						uint32_t crc = compute(report.CRC.Buff, sizeof(report) - 4);
 						report.CRC.CRC = crc;
 
@@ -694,7 +695,13 @@ int readFunc() {
 			std::this_thread::sleep_for(std::chrono::milliseconds(15));
 		}
 
+	#if defined(_WIN32) || defined(_WIN64)
+		timeBeginPeriod(1);
+	#endif
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	#if defined(_WIN32) || defined(_WIN64)
+		timeEndPeriod(1);
+	#endif
 	}
 
 	return 0;
@@ -734,7 +741,6 @@ int watchFunc() {
 							}
 
 							if (!already) {
-
 								std::lock_guard<std::shared_mutex> guard(controller.lock);
 								controller.handle = handle;
 								controller.macAddress = newMac;
@@ -748,17 +754,17 @@ int watchFunc() {
 								uint16_t size = 0;
 								duaLibUtils::GetID(info->path, &id, reinterpret_cast<int*>(&size));
 
-							#ifdef _WIN32
+							#if defined(_WIN32) || defined(_WIN64)
 								controller.id = id;
 								controller.idSize = size;
 							#endif
-								
+
 
 								uint16_t dev = g_deviceList.devices[j].Device;
 
 								if (dev == DUALSENSE_DEVICE_ID || dev == DUALSENSE_EDGE_DEVICE_ID) { controller.deviceType = DUALSENSE; }
 								else if (dev == DUALSHOCK4_DEVICE_ID || dev == DUALSHOCK4V2_DEVICE_ID || dev == DUALSHOCK4_WIRELESS_ADAPTOR_ID) { controller.deviceType = DUALSHOCK4; }
-			
+
 								if (controller.deviceType == DUALSENSE && (info->bus_type == HID_API_BUS_USB || info->bus_type == HID_API_BUS_UNKNOWN)) {
 									duaLibUtils::getHardwareVersion(controller.handle, controller.versionReport);
 									dualsenseData::ReportOut02 report = {};
@@ -867,18 +873,13 @@ int watchFunc() {
 
 int scePadInit() {
 	if (!g_initialized) {
-
-	#ifdef _WIN32
-		timeBeginPeriod(1);
-	#endif
-
 		int res = hid_init();
-		
+
 		if (res)
 			return res;
 
 		for (auto& controller : g_controllers) {
-			controller.dualsenseLastOutputState.OutputPathSelect = 254; // Set it to something bigger than 4 so the audio path can reset back to 0 on first write
+			controller.dualsenseLastOutputState.OutputPathSelect = 10; // Set it to something bigger than 4 so the audio path can reset back to 0 on first write
 		}
 		g_threadRunning = true;
 		g_readThread = std::thread(readFunc);
@@ -887,7 +888,12 @@ int scePadInit() {
 		g_watchThread.detach();
 		g_initialized = true;
 	}
-	return 0;
+
+	return SCE_OK;
+}
+
+int scePadInit3() {
+	return scePadInit();
 }
 
 int scePadTerminate(void) {
@@ -908,16 +914,16 @@ int scePadTerminate(void) {
 	}
 	g_particularMode = false;
 
-	if (g_readThread.joinable()) {
-		g_readThread.join();
-	}
-	if (g_watchThread.joinable()) {
-		g_watchThread.join();
-	}
+	//if (g_readThread.joinable()) {
+	//	g_readThread.join();
+	//}
+	//if (g_watchThread.joinable()) {
+	//	g_watchThread.join();
+	//}
 	return SCE_OK;
 }
 
-int scePadOpen(int userID, int, int) {
+int scePadOpen(int userID, int unk1, int unk2, void* unk3) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 	if (userID > MAX_CONTROLLER_COUNT || userID < 0) return SCE_PAD_ERROR_INVALID_ARG;
 
@@ -1003,6 +1009,7 @@ int scePadReadState(int handle, s_ScePadData* data) {
 		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
+
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
 
 		s_ScePadData state = {};
@@ -1071,10 +1078,12 @@ int scePadReadState(int handle, s_ScePadData* data) {
 				state.angularVelocity.z = controller.velocityDeadband == true && (state.angularVelocity.z < ANGULAR_VELOCITY_DEADBAND_MIN && state.angularVelocity.z > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : state.angularVelocity.z;
 
 				auto& q = controller.orientation;
-				s_SceFQuaternion ω = { state.angularVelocity.x,
-						   state.angularVelocity.y,
-						   state.angularVelocity.z,
-						   0.0f };
+				s_SceFQuaternion ω = { 
+					state.angularVelocity.x,
+					state.angularVelocity.y,
+					state.angularVelocity.z,
+					0.0f 
+				};
 
 				s_SceFQuaternion qω = {
 				  q.w * ω.x + q.x * ω.w + q.y * ω.z - q.z * ω.y,
@@ -1094,14 +1103,14 @@ int scePadReadState(int handle, s_ScePadData* data) {
 				q.x /= norm; q.y /= norm; q.z /= norm; q.w /= norm;
 
 				state.orientation.x = q.x;
-				state.orientation.y = q.y;
-				state.orientation.z = q.z;
+				state.orientation.y = q.z;
+				state.orientation.z = q.y; // yes this is swapped on purpose don't touch it
 				state.orientation.w = q.w;
 			}
 		#pragma endregion
 
 		#pragma region touchpad
-			state.touchData.touchNum = controller.dualsenseCurInputState.touchData.Timestamp;
+			state.touchData.touchNum = (controller.dualsenseCurInputState.touchData.Finger[0].NotTouching > 0 ? 0 : 1) + (controller.dualsenseCurInputState.touchData.Finger[1].NotTouching > 0 ? 0 : 1);
 
 			state.touchData.touch[0].id = controller.dualsenseCurInputState.touchData.Finger[0].Index;
 			state.touchData.touch[0].x = controller.dualsenseCurInputState.touchData.Finger[0].FingerX;
@@ -1110,6 +1119,8 @@ int scePadReadState(int handle, s_ScePadData* data) {
 			state.touchData.touch[1].id = controller.dualsenseCurInputState.touchData.Finger[1].Index;
 			state.touchData.touch[1].x = controller.dualsenseCurInputState.touchData.Finger[1].FingerX;
 			state.touchData.touch[1].y = controller.dualsenseCurInputState.touchData.Finger[1].FingerY;
+
+		
 		#pragma endregion
 
 		#pragma region misc
@@ -1209,22 +1220,22 @@ int scePadReadState(int handle, s_ScePadData* data) {
 				q.x /= norm; q.y /= norm; q.z /= norm; q.w /= norm;
 
 				state.orientation.x = q.x;
-				state.orientation.y = q.y;
-				state.orientation.z = q.z;
+				state.orientation.y = q.z;
+				state.orientation.z = q.y;  // yes this is swapped on purpose don't touch it
 				state.orientation.w = q.w;
 			}
 		#pragma endregion
 
 		#pragma region touchpad
-			state.touchData.touchNum = controller.dualsenseCurInputState.touchData.Timestamp;
+			state.touchData.touchNum = (controller.dualshock4CurInputState.Finger1Active > 0 ? 0 : 1) + (controller.dualshock4CurInputState.Finger2Active > 0 ? 0 : 1);
 
-			state.touchData.touch[0].id = controller.dualshock4CurInputState.touchData[0].Finger[0].Index;
-			state.touchData.touch[0].x = controller.dualshock4CurInputState.touchData[0].Finger[0].FingerX;
-			state.touchData.touch[0].y = controller.dualshock4CurInputState.touchData[0].Finger[0].FingerY;
+			state.touchData.touch[0].id = controller.dualshock4CurInputState.Finger1ID;
+			state.touchData.touch[0].x = controller.dualshock4CurInputState.Finger1X;
+			state.touchData.touch[0].y = controller.dualshock4CurInputState.Finger1Y;
 
-			state.touchData.touch[1].id = controller.dualshock4CurInputState.touchData[0].Finger[1].Index;
-			state.touchData.touch[1].x = controller.dualshock4CurInputState.touchData[0].Finger[1].FingerX;
-			state.touchData.touch[1].y = controller.dualshock4CurInputState.touchData[0].Finger[1].FingerY;
+			state.touchData.touch[1].id = controller.dualshock4CurInputState.Finger2ID;
+			state.touchData.touch[1].x = controller.dualshock4CurInputState.Finger2X;
+			state.touchData.touch[1].y = controller.dualshock4CurInputState.Finger2Y;
 		#pragma endregion
 
 		#pragma region misc
@@ -1240,15 +1251,17 @@ int scePadReadState(int handle, s_ScePadData* data) {
 		}
 
 		*data = state;
+
 		return SCE_OK;
 	}
+
 	return SCE_PAD_ERROR_INVALID_HANDLE;
 }
 
 int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* containerIdInfo) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
-#ifdef _WIN32 // Windows only for now
+#if defined(_WIN32) || defined(_WIN64) // Windows only for now
 	for (auto& controller : g_controllers) {
 		std::lock_guard<std::shared_mutex> guard(controller.lock);
 		if (controller.sceHandle == handle && controller.id != "" && controller.idSize != 0) {
@@ -1287,12 +1300,14 @@ int scePadSetLightBar(int handle, s_SceLightBar* lightbar) {
 			controller.dualshock4CurOutputState.LedGreen = lightbar->g;
 			controller.dualshock4CurOutputState.LedBlue = lightbar->b;
 		}
+
 		return SCE_OK;
 	}
+
 	return SCE_PAD_ERROR_INVALID_HANDLE;
 }
 
-int scePadGetHandle(int userID, int, int) {
+int scePadGetHandle(int userID, int unk1, int unk2) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 	if (userID > MAX_CONTROLLER_COUNT || userID < 0) return SCE_PAD_ERROR_INVALID_PORT;
 
@@ -1302,6 +1317,7 @@ int scePadGetHandle(int userID, int, int) {
 		if (g_controllers[i].playerIndex != userID) continue;
 		return g_controllers[i].sceHandle;
 	}
+
 	return SCE_PAD_ERROR_NO_HANDLE;
 }
 
@@ -1463,7 +1479,7 @@ int scePadGetJackState(int handle, int* state) {
 	return SCE_PAD_ERROR_INVALID_HANDLE;
 }
 
-int scePadGetTriggerEffectState(int handle, uint8_t state[2]) {
+int scePadGetTriggerEffectState(int handle, int state[2]) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
@@ -1574,7 +1590,7 @@ int scePadIsControllerUpdateRequired(int handle) {
 	return SCE_PAD_ERROR_INVALID_HANDLE;
 }
 
-int scePadRead(int handle, void* data, int count) {
+int scePadRead(int handle, s_ScePadData* data, int count) {
 	// No idea what's the purpose of this, in the original library it does literally the same thing as scePadReadState but the program crashes when count is bigger than 20
 
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
@@ -1599,6 +1615,7 @@ int scePadResetOrientation(int handle) {
 
 		return SCE_OK;
 	}
+
 	return SCE_PAD_ERROR_INVALID_HANDLE;
 }
 
@@ -1615,6 +1632,7 @@ int scePadSetAngularVelocityDeadbandState(int handle, bool state) {
 
 		return SCE_OK;
 	}
+
 	return SCE_PAD_ERROR_INVALID_HANDLE;
 }
 
@@ -1637,6 +1655,7 @@ int scePadSetAudioOutPath(int handle, int path) {
 
 		return SCE_OK;
 	}
+
 	return SCE_PAD_ERROR_INVALID_HANDLE;
 }
 
@@ -1647,12 +1666,13 @@ int scePadSetMotionSensorState(int handle, bool state) {
 		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
-		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
+		if (!controller.valid) { return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED; }
 
 		controller.motionSensorState = state;
 
 		return SCE_OK;
 	}
+
 	return SCE_PAD_ERROR_INVALID_HANDLE;
 }
 
@@ -1669,6 +1689,7 @@ int scePadSetTiltCorrectionState(int handle, bool state) {
 
 		return SCE_OK;
 	}
+
 	return SCE_PAD_ERROR_INVALID_HANDLE;
 }
 
@@ -1692,6 +1713,7 @@ int scePadSetVibration(int handle, s_ScePadVibrationParam* vibration) {
 
 		return SCE_OK;
 	}
+
 	return SCE_PAD_ERROR_INVALID_HANDLE;
 }
 
@@ -1804,8 +1826,7 @@ int main() {
 	}
 
 	//int handle = scePadOpen(1, NULL, NULL, NULL);
-	int handle = scePadOpen(1, 0, 0);
-	int handle2 = scePadOpen(2, 0, 0);
+	int handle = scePadOpen(1, 0, 0, NULL);
 	//int handle3 = scePadOpen(3, 0, 0);
 	//int handle4 = scePadOpen(4, 0, 0);
 
@@ -1843,7 +1864,7 @@ int main() {
 	s_ScePadInfo info;
 	scePadGetControllerInformation(handle, &info);
 
-	s_ScePadVibrationParam vibr = {255,255};
+	s_ScePadVibrationParam vibr = { 255,255 };
 	//scePadSetVibration(handle2, &vibr);
 
 	ScePadTriggerEffectParam trigger2 = {};
@@ -1865,8 +1886,14 @@ int main() {
 
 	while (true) {
 		s_ScePadData data = {};
-		scePadReadState(handle2, &data);
-		std::cout << data.bitmask_buttons << std::endl;
+		scePadReadState(handle, &data);
+		//std::cout << "X: " << data.orientation.x << " Y: " << data.orientation.y << " Z: " << data.orientation.z << " W: " << data.orientation.w << std::endl;
+		std::cout << (int)data.touchData.touch[1].id << " touches" << std::endl;
+		if (data.bitmask_buttons & SCE_BM_CROSS) {
+			scePadResetOrientation(handle);
+			std::cout << "pushed " << std::endl;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 
 	getchar();

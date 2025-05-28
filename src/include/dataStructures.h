@@ -21,21 +21,21 @@ template<int N> struct BTCRC {
 	uint8_t Buff[N - 4];
 	uint32_t CRC;
 };
-
-struct TouchFingerData {
-	uint32_t Index : 7;
-	uint32_t NotTouching : 1;
-	uint32_t FingerX : 12;
-	uint32_t FingerY : 12;
-};
-
-struct TouchData {
-	uint8_t Timestamp;
-	TouchFingerData Finger[2];
-};
 #pragma pack(pop)
 
 namespace dualsenseData {
+	struct TouchFingerData {
+		uint32_t Index : 7;
+		uint32_t NotTouching : 1;
+		uint32_t FingerX : 12;
+		uint32_t FingerY : 12;
+	};
+
+	struct TouchData {
+		TouchFingerData Finger[2];
+		uint8_t Timestamp;
+	};
+
 #pragma pack(push, 1)
 	enum class PowerState : uint8_t {
 		Discharging = 0x00, // Use PowerPercent
@@ -415,6 +415,8 @@ namespace dualsenseData {
 
 namespace dualshock4Data {
 #pragma pack(push, 1)
+
+
 	template<int N> struct BTAudio {
 		uint16_t FrameNumber;
 		uint8_t AudioTarget; // 0x02 speaker?, 0x24 headset?, 0x03 mic?
@@ -422,61 +424,64 @@ namespace dualshock4Data {
 	};
 
 	struct BasicGetStateData {
-		/*0  */ uint8_t LeftStickX;
-		/*1  */ uint8_t LeftStickY;
-		/*2  */ uint8_t RightStickX;
-		/*3  */ uint8_t RightStickY;
-		/*4.0*/ Direction DPad : 4;
-		/*4.4*/ uint8_t ButtonSquare : 1;
-		/*4.5*/ uint8_t ButtonCross : 1;
-		/*4.6*/ uint8_t ButtonCircle : 1;
-		/*4.7*/ uint8_t ButtonTriangle : 1;
-		/*5.0*/ uint8_t ButtonL1 : 1;
-		/*5.1*/ uint8_t ButtonR1 : 1;
-		/*5.2*/ uint8_t ButtonL2 : 1;
-		/*5.3*/ uint8_t ButtonR2 : 1;
-		/*5.4*/ uint8_t ButtonShare : 1;
-		/*5.5*/ uint8_t ButtonOptions : 1;
-		/*5.6*/ uint8_t ButtonL3 : 1;
-		/*5.7*/ uint8_t ButtonR3 : 1;
-		/*6.0*/ uint8_t ButtonHome : 1;
-		/*6.1*/ uint8_t ButtonPad : 1;
-		/*6.2*/ uint8_t Counter : 6; // always 0 on USB, counts up with some skips on BT
-		/*7  */ uint8_t TriggerLeft;
-		/*8  */ uint8_t TriggerRight;
+		uint8_t LeftStickX;
+		uint8_t LeftStickY;
+		uint8_t RightStickX;
+		uint8_t RightStickY;
+		Direction DPad : 4;
+		uint8_t ButtonSquare : 1;
+		uint8_t ButtonCross : 1;
+		uint8_t ButtonCircle : 1;
+		uint8_t ButtonTriangle : 1;
+		uint8_t ButtonL1 : 1;
+		uint8_t ButtonR1 : 1;
+		uint8_t ButtonL2 : 1;
+		uint8_t ButtonR2 : 1;
+		uint8_t ButtonShare : 1;
+		uint8_t ButtonOptions : 1;
+		uint8_t ButtonL3 : 1;
+		uint8_t ButtonR3 : 1;
+		uint8_t ButtonHome : 1;
+		uint8_t ButtonPad : 1;
+		uint8_t Counter : 6; // always 0 on USB, counts up with some skips on BT
+		uint8_t TriggerLeft;
+		uint8_t TriggerRight;
 	};
 
 	struct GetStateData : BasicGetStateData {
-		/* 9  */ uint16_t Timestamp; // in 5.33us units?
-		/*11  */ uint8_t Temperture;
-		/*12  */ int16_t AngularVelocityX;
-		/*14  */ int16_t AngularVelocityZ;
-		/*16  */ int16_t AngularVelocityY;
-		/*18  */ int16_t AccelerometerX;
-		/*20  */ int16_t AccelerometerY;
-		/*22  */ int16_t AccelerometerZ;
-		/*24  */ uint8_t ExtData[5]; // range can be set by EXT device
-		/*29  */ uint8_t PowerPercent : 4; // 0x00-0x0A or 0x01-0x0B if plugged int
-		/*29.4*/ uint8_t PluggedPowerCable : 1;
-		/*29.5*/ uint8_t PluggedHeadphones : 1;
-		/*29.6*/ uint8_t PluggedMic : 1;
-		/*29,7*/ uint8_t PluggedExt : 1;
-		/*30.0*/ uint8_t UnkExt1 : 1; // ExtCapableOfExtraData?
-		/*30.1*/ uint8_t UnkExt2 : 1; // ExtHasExtraData?
-		/*30.2*/ uint8_t NotConnected : 1; // Used by dongle to indicate no controller
-		/*30.3*/ uint8_t Unk1 : 5;
-		/*31  */ uint8_t Unk2; // unused?
-		/*32  */ uint8_t TouchCount;
+		uint16_t Timestamp; // in 5.33us units?
+		uint8_t Temperture;
+		int16_t AngularVelocityX;
+		int16_t AngularVelocityZ;
+		int16_t AngularVelocityY;
+		int16_t AccelerometerX;
+		int16_t AccelerometerY;
+		int16_t AccelerometerZ;
+		uint8_t ExtData[5]; // range can be set by EXT device
+		uint8_t PowerPercent : 4; // 0x00-0x0A or 0x01-0x0B if plugged int
+		uint8_t PluggedPowerCable : 1;
+		uint8_t PluggedHeadphones : 1;
+		uint8_t PluggedMic : 1;
+		uint8_t PluggedExt : 1;
+		uint8_t unk2[2];
+		uint8_t TouchPackets;
+		uint8_t PacketCount;
+		uint32_t Finger1ID : 7;
+		uint32_t Finger1Active : 1;
+		uint32_t Finger1X : 12;
+		uint32_t Finger1Y : 12;
+		uint32_t Finger2ID : 7;
+		uint32_t Finger2Active : 1;
+		uint32_t Finger2X : 12;
+		uint32_t Finger2Y : 12;
 	};
 
 	struct USBGetStateData : GetStateData {
-		TouchData touchData[3];
-		uint8_t Pad[3];
+
 	};
 
 	struct BTGetStateData : GetStateData {
-		TouchData touchData[4];
-		uint8_t Pad[6];
+
 	};
 
 	struct ReportIn01USB {
