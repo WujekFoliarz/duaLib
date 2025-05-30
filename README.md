@@ -11,7 +11,7 @@ git submodule add https://github.com/WujekFoliarz/duaLib.git --init --recursive
 ```
 or
 ```
-git clone https://github.com/WujekFoliarz/duaLib.git --init --recursive
+git clone https://github.com/WujekFoliarz/duaLib.git --recursive
 ```
 ### Alternatively:
 
