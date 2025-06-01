@@ -2,6 +2,8 @@
 An open source version of the official sony controller library (dualshock 4/dualsense).
 It aims to replicate the original library's behavior, possibly making it crossplatform
 
+This can replace the original library in any non-DRM game if libScePad.dll is present in the game files. It might need tweaking for specific games.
+
 ### Our [discord server](https://discord.com/invite/AFYvxf282U)
 
 ## Usage
