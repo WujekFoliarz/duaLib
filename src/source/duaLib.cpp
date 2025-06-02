@@ -948,7 +948,6 @@ int scePadOpen(int userID, int unk1, int unk2) {
 	volatile int preventOptim2 = unk2;
 	(void)preventOptim1;
 	(void)preventOptim2;
-	LOG(unk1, unk2, userID);
 
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 	if (userID > MAX_CONTROLLER_COUNT || userID < 1) return SCE_PAD_ERROR_INVALID_ARG;
