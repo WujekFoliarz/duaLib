@@ -47,7 +47,7 @@
 #define ANGULAR_VELOCITY_DEADBAND_MIN 0.017453292
 
 #ifdef LOGGING
-std::ofstream logFile("E:/SteamLibrary/steamapps/common/StellarBladeDemo/Engine/Binaries/ThirdParty/LibScePad_PS5/bin/duaLibLOG.txt");
+std::ofstream logFile("duaLibLOG.txt");
 #endif
 
 #ifdef LOGGING  
