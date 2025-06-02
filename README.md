@@ -4,6 +4,8 @@ It aims to replicate the original library's behavior, possibly making it crosspl
 
 This can replace the original library in any non-DRM game if libScePad.dll is present in the game files. It might need tweaking for specific games.
 
+Based on latest version from Stellar Blade
+
 ### Our [discord server](https://discord.com/invite/AFYvxf282U)
 
 ## Usage
@@ -28,8 +30,8 @@ Use this [header](https://github.com/WujekFoliarz/duaLib/blob/master/src/include
 | Function                                                                                  | Implementation  | Comment  |
 | -------------                                                                             | -               |------------- | 
 | int scePadInit()                                                                          |✅              |
-| int scePadOpen(int userID, int, int, void*)                                               |⚠️              | The handle numbers are not accurate to libScePad's. Probably not important though
-| int scePadClose(int userID)																|✅              | 
+| int scePadOpen(int userID, int, int)                                               |⚠️              | The handle numbers are not accurate to libScePad's. Probably not important though
+| int scePadClose(int handle)													 |✅              | 
 | int scePadSetParticularMode(bool mode)                                                    |✅              | 
 | int scePadReadState(int handle, s_ScePadData* data)                                       |✅              | Big yaw drift in orientation, I recommend setting DeadbandState to true.
 | int scePadSetLightBar(int handle, s_SceLightBar* lightbar)                                |✅              |
