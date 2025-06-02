@@ -9,7 +9,7 @@ This can replace the original library in any non-DRM game if libScePad.dll is pr
 ## Usage
 ### Cmake: 
 ```
-git submodule add https://github.com/WujekFoliarz/duaLib.git --init --recursive
+git submodule add https://github.com/WujekFoliarz/duaLib.git --recursive
 ```
 or
 ```
