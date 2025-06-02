@@ -46,6 +46,20 @@
 #define DUALSENSE 2
 #define ANGULAR_VELOCITY_DEADBAND_MIN 0.017453292
 
+#ifdef LOGGING
+std::ofstream logFile("E:/SteamLibrary/steamapps/common/StellarBladeDemo/Engine/Binaries/ThirdParty/LibScePad_PS5/bin/duaLibLOG.txt");
+#endif
+
+#ifdef LOGGING  
+#define LOG(msg) do { \
+auto now = std::chrono::system_clock::now(); \
+auto now_c = std::chrono::system_clock::to_time_t(now); \
+logFile << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S") << " - " << msg << std::endl; \
+} while (0)
+#else
+#define LOG(msg) do {} while (0)
+#endif
+
 namespace duaLibUtils {
 
 	bool letGo(hid_device* handle, uint8_t deviceType, uint8_t connectionType) {
@@ -404,10 +418,10 @@ int readFunc() {
 				int32_t res = -1;
 
 				if (isBt)
-					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt));			
-				else 
+					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt));
+				else
 					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb));
-				
+
 
 				dualsenseData::USBGetStateData inputData = isBt ? inputBt.Data.State.StateData : inputUsb.State;
 
@@ -573,7 +587,7 @@ int readFunc() {
 						}
 					}
 
-					if (res > 0) {				
+					if (res > 0) {
 						controller.wasDisconnected = false;
 						//std::cout << "Controller idx " << controller.sceHandle << " path=" << controller.macAddress << " connType=" << (int)controller.connectionType << std::endl;
 					}
@@ -872,6 +886,15 @@ int watchFunc() {
 }
 
 int scePadInit() {
+	LOG("scePadInit called");
+	s_ScePadInitParam param = {};
+	param.allowBT = true;
+	return scePadInit3(&param);
+}
+
+int scePadInit3(s_ScePadInitParam* param) {
+	LOG("scePadInit3 called");
+
 	if (!g_initialized) {
 		int res = hid_init();
 
@@ -889,11 +912,8 @@ int scePadInit() {
 		g_initialized = true;
 	}
 
+	LOG("scePadInit3 returned SCE_OK");
 	return SCE_OK;
-}
-
-int scePadInit3() {
-	return scePadInit();
 }
 
 int scePadTerminate(void) {
@@ -923,9 +943,15 @@ int scePadTerminate(void) {
 	return SCE_OK;
 }
 
-int scePadOpen(int userID, int unk1, int unk2, void* unk3) {
+int scePadOpen(int userID, int unk1, int unk2) {
+	volatile int preventOptim1 = unk1;
+	volatile int preventOptim2 = unk2;
+	(void)preventOptim1;
+	(void)preventOptim2;
+	LOG(unk1, unk2, userID);
+
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
-	if (userID > MAX_CONTROLLER_COUNT || userID < 0) return SCE_PAD_ERROR_INVALID_ARG;
+	if (userID > MAX_CONTROLLER_COUNT || userID < 1) return SCE_PAD_ERROR_INVALID_ARG;
 
 	int index = userID - 1;
 	bool wasAlreadyOpened = false;
@@ -976,6 +1002,11 @@ int scePadSetParticularMode(bool mode) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 	g_particularMode = mode;
 	return SCE_OK;
+}
+
+int scePadGetParticularMode() {
+	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
+	return g_particularMode;
 }
 
 static float Vec3Length(const s_SceFVector3& v) {
@@ -1078,11 +1109,11 @@ int scePadReadState(int handle, s_ScePadData* data) {
 				state.angularVelocity.z = controller.velocityDeadband == true && (state.angularVelocity.z < ANGULAR_VELOCITY_DEADBAND_MIN && state.angularVelocity.z > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : state.angularVelocity.z;
 
 				auto& q = controller.orientation;
-				s_SceFQuaternion ω = { 
+				s_SceFQuaternion ω = {
 					state.angularVelocity.x,
 					state.angularVelocity.y,
 					state.angularVelocity.z,
-					0.0f 
+					0.0f
 				};
 
 				s_SceFQuaternion qω = {
@@ -1119,8 +1150,6 @@ int scePadReadState(int handle, s_ScePadData* data) {
 			state.touchData.touch[1].id = controller.dualsenseCurInputState.touchData.Finger[1].Index;
 			state.touchData.touch[1].x = controller.dualsenseCurInputState.touchData.Finger[1].FingerX;
 			state.touchData.touch[1].y = controller.dualsenseCurInputState.touchData.Finger[1].FingerY;
-
-		
 		#pragma endregion
 
 		#pragma region misc
@@ -1308,6 +1337,11 @@ int scePadSetLightBar(int handle, s_SceLightBar* lightbar) {
 }
 
 int scePadGetHandle(int userID, int unk1, int unk2) {
+	volatile int preventOptim1 = unk1;
+	volatile int preventOptim2 = unk2;
+	(void)preventOptim1;
+	(void)preventOptim2;
+
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 	if (userID > MAX_CONTROLLER_COUNT || userID < 0) return SCE_PAD_ERROR_INVALID_PORT;
 
@@ -1826,8 +1860,7 @@ int main() {
 	}
 
 	//int handle = scePadOpen(1, NULL, NULL, NULL);
-	int handle = scePadOpen(1, 0, 0, NULL);
-	//int handle3 = scePadOpen(3, 0, 0);
+	int handle = scePadOpen(1, 0, 0);
 	//int handle4 = scePadOpen(4, 0, 0);
 
 	std::cout << handle << std::endl;
@@ -1888,12 +1921,10 @@ int main() {
 		s_ScePadData data = {};
 		scePadReadState(handle, &data);
 		//std::cout << "X: " << data.orientation.x << " Y: " << data.orientation.y << " Z: " << data.orientation.z << " W: " << data.orientation.w << std::endl;
-		std::cout << (int)data.touchData.touch[1].id << " touches" << std::endl;
 		if (data.bitmask_buttons & SCE_BM_CROSS) {
 			scePadResetOrientation(handle);
 			std::cout << "pushed " << std::endl;
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 
 	getchar();

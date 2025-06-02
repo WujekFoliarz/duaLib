@@ -361,6 +361,14 @@ enum s_SceControllerType {
 #define SCE_PAD_HAPTICS_MODE 0x01
 #define SCE_PAD_RUMBLE_MODE 0x02
 
+// From original library, don't touch
+struct s_ScePadInitParam {
+	uint8_t  padding0[16];    // corresponds to v23 (all zero)
+	uint32_t allowBT;         // = v12 (0 or 1)
+	uint8_t  padding1[12];    // rest of v24 (zero)
+	uint64_t padding2;        // v25 (zero)
+};
+
 #if defined(_WIN32) || defined(_WIN64)
 	#ifdef DUALIB_EXPORTS
 		#define DUALIB_API __declspec(dllexport)
@@ -379,10 +387,11 @@ enum s_SceControllerType {
 extern "C" {
 #endif
 DUALIB_API int scePadInit();
-DUALIB_API int scePadInit3();
+DUALIB_API int scePadInit3(s_ScePadInitParam* param);
 DUALIB_API int scePadTerminate();
-DUALIB_API int scePadOpen(int userID, int unk1, int unk2, void* unk3);
+DUALIB_API int scePadOpen(int userID, int unk1, int unk2);
 DUALIB_API int scePadSetParticularMode(bool mode);
+DUALIB_API int scePadGetParticularMode();
 DUALIB_API int scePadReadState(int handle, s_ScePadData* data);
 DUALIB_API int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* containerIdInfo);
 DUALIB_API int scePadSetLightBar(int handle, s_SceLightBar* lightbar);
