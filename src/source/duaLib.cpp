@@ -1342,7 +1342,7 @@ int scePadGetHandle(int userID, int unk1, int unk2) {
 	(void)preventOptim2;
 
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
-	if (userID > MAX_CONTROLLER_COUNT || userID < 0) return SCE_PAD_ERROR_INVALID_PORT;
+	if (userID > MAX_CONTROLLER_COUNT || userID < 1) return SCE_PAD_ERROR_INVALID_PORT;
 
 	for (int i = 0; i < MAX_CONTROLLER_COUNT - 1; i++) {
 		std::lock_guard<std::shared_mutex> guard(g_controllers[i].lock);
