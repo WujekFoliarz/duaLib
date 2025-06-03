@@ -361,12 +361,11 @@ enum s_SceControllerType {
 #define SCE_PAD_HAPTICS_MODE 0x01
 #define SCE_PAD_RUMBLE_MODE 0x02
 
-// From original library, don't touch
 struct s_ScePadInitParam {
-	uint8_t  padding0[16];    // corresponds to v23 (all zero)
-	uint32_t allowBT;         // = v12 (0 or 1)
-	uint8_t  padding1[12];    // rest of v24 (zero)
-	uint64_t padding2;        // v25 (zero)
+	uint8_t  customAllocAndFree[16]; // Can be left unused
+	uint32_t allowBT;         // Set to 1 to allow Bluetooth connections, 0 to disable
+	uint64_t  padding1[2];      
+	uint32_t  padding2;       
 };
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -386,6 +385,7 @@ struct s_ScePadInitParam {
 #ifdef __cplusplus
 extern "C" {
 #endif
+// Use scePadInit3() if you want to allow for bluetooth connections
 DUALIB_API int scePadInit();
 DUALIB_API int scePadInit3(s_ScePadInitParam* param);
 DUALIB_API int scePadTerminate();

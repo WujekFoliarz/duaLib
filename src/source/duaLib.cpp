@@ -388,6 +388,7 @@ duaLibUtils::controller g_controllers[MAX_CONTROLLER_COUNT] = {};
 std::atomic<bool> g_threadRunning = false;
 std::atomic<bool> g_initialized = false;
 std::atomic<bool> g_particularMode = false;
+std::atomic<bool> g_allowBluetooth = false;
 std::thread g_readThread;
 std::thread g_watchThread;
 constexpr std::array<s_SceLightBar, 4> g_playerColors = { {
@@ -738,14 +739,19 @@ int watchFunc() {
 					);
 
 					for (hid_device_info* info = head; info; info = info->next) {
+						std::string newMac;
+						bool already = false;
+
 						hid_device* handle = hid_open_path(info->path);
+						if (info->bus_type == HID_API_BUS_BLUETOOTH && !g_allowBluetooth)
+						{
+							goto skipController;
+						}
 
 						if (!handle) continue;
 						hid_set_nonblocking(handle, 1);
 
-						std::string newMac;
-						if (duaLibUtils::getMacAddress(handle, newMac, g_deviceList.devices[j].Device, info->bus_type)) {
-							bool already = false;
+						if (duaLibUtils::getMacAddress(handle, newMac, g_deviceList.devices[j].Device, info->bus_type)) {						
 							for (int k = 0; k < MAX_CONTROLLER_COUNT; ++k) {
 								std::lock_guard<std::shared_mutex> guard(g_controllers[k].lock);
 								if (g_controllers[k].macAddress == newMac) {
@@ -852,6 +858,7 @@ int watchFunc() {
 								break;
 							}
 
+							skipController:
 							hid_close(handle);
 						}
 						else {
@@ -888,12 +895,14 @@ int watchFunc() {
 int scePadInit() {
 	LOG("scePadInit called");
 	s_ScePadInitParam param = {};
-	param.allowBT = true;
+	param.allowBT = false;
+	
 	return scePadInit3(&param);
 }
 
 int scePadInit3(s_ScePadInitParam* param) {
 	LOG("scePadInit3 called");
+	if (!param) return SCE_PAD_ERROR_INVALID_ARG;
 
 	if (!g_initialized) {
 		int res = hid_init();
@@ -904,6 +913,8 @@ int scePadInit3(s_ScePadInitParam* param) {
 		for (auto& controller : g_controllers) {
 			controller.dualsenseLastOutputState.OutputPathSelect = 10; // Set it to something bigger than 4 so the audio path can reset back to 0 on first write
 		}
+
+		g_allowBluetooth = param->allowBT;
 		g_threadRunning = true;
 		g_readThread = std::thread(readFunc);
 		g_watchThread = std::thread(watchFunc);
@@ -1342,7 +1353,7 @@ int scePadGetHandle(int userID, int unk1, int unk2) {
 	(void)preventOptim2;
 
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
-	if (userID > MAX_CONTROLLER_COUNT || userID < 0) return SCE_PAD_ERROR_INVALID_PORT;
+	if (userID > MAX_CONTROLLER_COUNT || userID < 1) return SCE_PAD_ERROR_INVALID_PORT;
 
 	for (int i = 0; i < MAX_CONTROLLER_COUNT - 1; i++) {
 		std::lock_guard<std::shared_mutex> guard(g_controllers[i].lock);
@@ -1854,7 +1865,9 @@ int scePadClose(int handle) {
 
 #if COMPILE_TO_EXE
 int main() {
-	if (scePadInit() != SCE_OK) {
+	s_ScePadInitParam initParam = {};
+	initParam.allowBT = true;
+	if (scePadInit3(&initParam) != SCE_OK) {
 		std::cout << "Failed to initalize!" << std::endl;
 	}
 
