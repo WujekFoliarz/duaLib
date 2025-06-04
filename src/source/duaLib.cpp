@@ -401,6 +401,7 @@ constexpr std::array<s_SceLightBar, 4> g_playerColors = { {
 int readFunc() {
 #if defined(_WIN32) || defined(_WIN64)
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+	timeBeginPeriod(1);
 #endif
 
 	while (g_threadRunning) {
@@ -419,10 +420,9 @@ int readFunc() {
 				int32_t res = -1;
 
 				if (isBt)
-					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt));
+					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt), 0);
 				else
-					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb));
-
+					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb), 0);
 
 				dualsenseData::USBGetStateData inputData = isBt ? inputBt.Data.State.StateData : inputUsb.State;
 
@@ -430,7 +430,7 @@ int readFunc() {
 					controller.valid = false;
 				}
 
-				if (res == -1) {
+				if (res <= 0) {
 					controller.failedReadCount++;
 					continue;
 				}
@@ -442,7 +442,6 @@ int readFunc() {
 						controller.dualsenseCurOutputState.MuteLightMode = controller.isMicMuted ? dualsenseData::MuteLight::On : dualsenseData::MuteLight::Off;
 						controller.dualsenseCurOutputState.MicMute = controller.isMicMuted;
 						controller.dualsenseCurOutputState.AllowMuteLight = true;
-
 					}
 					else {
 						controller.dualsenseCurOutputState.AllowMuteLight = false;
@@ -606,15 +605,15 @@ int readFunc() {
 
 				int res = -1;
 				if (isBt)
-					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt));
+					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt), 0);
 				else
-					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb));
+					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb), 0);
 
 				if (controller.failedReadCount >= 254) {
 					controller.valid = false;
 				}
 
-				if (res == -1) {
+				if (res <= 0) {
 					controller.failedReadCount++;
 					continue;
 				}
@@ -710,15 +709,12 @@ int readFunc() {
 			std::this_thread::sleep_for(std::chrono::milliseconds(15));
 		}
 
-	#if defined(_WIN32) || defined(_WIN64)
-		timeBeginPeriod(1);
-	#endif
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
-	#if defined(_WIN32) || defined(_WIN64)
-		timeEndPeriod(1);
-	#endif
 	}
 
+#if defined(_WIN32) || defined(_WIN64)
+	timeEndPeriod(1);
+#endif
 	return 0;
 }
 
