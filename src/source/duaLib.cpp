@@ -318,7 +318,7 @@ namespace duaLibUtils {
 		uint8_t force[11] = {};
 	};
 
-	struct Controller {
+	struct controller {
 		std::shared_mutex lock{};
 		hid_device* handle = 0;
 		uint16_t sceHandle = 0;
@@ -327,11 +327,11 @@ namespace duaLibUtils {
 		uint16_t productID = 0;
 		uint8_t seqNo = 0;
 		uint8_t connectionType = 0;
-		std::atomic<bool> opened = false;
-		std::atomic<bool> isMicMuted = false;
-		std::atomic<bool> wasDisconnected = false;
-		std::atomic<bool> valid = false;
-		std::atomic<uint8_t> failedReadCount = 0;
+		bool opened = false;
+		bool isMicMuted = false;
+		bool wasDisconnected = false;
+		bool valid = false;
+		uint8_t failedReadCount = 0;
 		dualsenseData::USBGetStateData dualsenseCurInputState = {};
 		dualsenseData::SetStateData dualsenseLastOutputState = {};
 		dualsenseData::SetStateData dualsenseCurOutputState = {};
@@ -364,8 +364,6 @@ namespace duaLibUtils {
 		uint8_t touch2LastCount = 0;
 		uint8_t touch1LastIndex = 0;
 		uint8_t touch2LastIndex = 0;
-
-		
 	};
 }
 
@@ -386,7 +384,7 @@ struct deviceList {
 };
 
 deviceList g_deviceList = {};
-duaLibUtils::Controller g_controllers[MAX_CONTROLLER_COUNT] = {};
+duaLibUtils::controller g_controllers[MAX_CONTROLLER_COUNT] = {};
 std::atomic<bool> g_threadRunning = false;
 std::atomic<bool> g_initialized = false;
 std::atomic<bool> g_particularMode = false;
@@ -409,6 +407,7 @@ int readFunc() {
 		bool allInvalid = true;
 
 		for (auto& controller : g_controllers) {
+			std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 			if (controller.valid && controller.opened && controller.deviceType == DUALSENSE) {
 				allInvalid = false;
@@ -559,11 +558,8 @@ int readFunc() {
 						controller.dualsenseCurOutputState.AllowRightTriggerFFB = false;
 					}
 
-					{
-						std::shared_lock guard(controller.lock);
-						controller.dualsenseCurOutputState.HostTimestamp = controller.dualsenseCurInputState.SensorTimestamp;
-						controller.triggerMask = 0;
-					}
+					controller.dualsenseCurOutputState.HostTimestamp = controller.dualsenseCurInputState.SensorTimestamp;
+					controller.triggerMask = 0;
 					res = -1;
 
 					if (controller.connectionType == HID_API_BUS_USB || controller.connectionType == HID_API_BUS_UNKNOWN) {
@@ -595,11 +591,8 @@ int readFunc() {
 						//std::cout << "Controller idx " << controller.sceHandle << " path=" << controller.macAddress << " connType=" << (int)controller.connectionType << std::endl;
 					}
 
-					{
-						std::shared_lock guard(controller.lock);
-						controller.dualsenseLastOutputState = controller.dualsenseCurOutputState;
-						controller.dualsenseCurInputState = inputData;
-					}
+					controller.dualsenseLastOutputState = controller.dualsenseCurOutputState;
+					controller.dualsenseCurInputState = inputData;
 				}
 			}
 			else if (controller.valid && controller.opened && controller.deviceType == DUALSHOCK4) {
@@ -611,9 +604,9 @@ int readFunc() {
 
 				int res = -1;
 				if (isBt)
-					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt));
+					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt), 0);
 				else
-					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb));
+					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb), 0);
 
 				if (controller.failedReadCount >= 254) {
 					controller.valid = false;
@@ -665,10 +658,7 @@ int readFunc() {
 					else
 						controller.dualshock4CurOutputState.EnableRumbleUpdate = false;
 
-					{
-						std::shared_lock guard(controller.lock);
-						controller.triggerMask = 0;
-					}
+					controller.triggerMask = 0;
 					res = -1;
 
 					if (controller.connectionType == HID_API_BUS_USB || controller.connectionType == HID_API_BUS_UNKNOWN) {
@@ -697,20 +687,16 @@ int readFunc() {
 						int res = hid_write(controller.handle, reinterpret_cast<unsigned char*>(&report), sizeof(report));
 					}
 
-					if (res > 0) {				
+					if (res > 0) {
+						controller.dualshock4LastOutputState = controller.dualshock4CurOutputState;
 						controller.wasDisconnected = false;
 						//std::cout << "Controller idx " << controller.sceHandle << " path=" << controller.macAddress << " connType=" << (int)controller.connectionType << std::endl;
 					}
 
-					{
-						std::shared_lock guard(controller.lock);
-						controller.dualshock4LastOutputState = controller.dualshock4CurOutputState;
-						controller.dualshock4CurInputState = isBt ? inputBt.State : inputUsb.State;
-					}
+					controller.dualshock4CurInputState = isBt ? inputBt.State : inputUsb.State;
 				}
 			}
 			else if (!controller.valid && controller.opened) {
-				std::shared_lock guard(controller.lock);
 				controller.productID = 0;
 				controller.lastPath = "";
 				controller.macAddress = "";
@@ -718,27 +704,31 @@ int readFunc() {
 			}
 		}
 
+		if (allInvalid) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(15));
+		}
+
 	#if defined(_WIN32) || defined(_WIN64)
 		timeBeginPeriod(1);
 	#endif
-		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	#if defined(_WIN32) || defined(_WIN64)
 		timeEndPeriod(1);
 	#endif
 	}
+
+#if defined(_WIN32) || defined(_WIN64)
+	timeEndPeriod(1);
+#endif
 	return 0;
 }
 
 int watchFunc() {
-#if defined(_WIN32) || defined(_WIN64)
-	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
-#endif
-
 	while (g_threadRunning) {
 		for (auto& controller : g_controllers) {
 			bool valid;
 			{
-				std::shared_lock guard(controller.lock);
+				std::lock_guard<std::shared_mutex> guard(controller.lock);
 				valid = duaLibUtils::isValid(controller.handle);
 			}
 
@@ -759,10 +749,11 @@ int watchFunc() {
 						}
 
 						if (!handle) continue;
+						hid_set_nonblocking(handle, 1);
 
 						if (duaLibUtils::getMacAddress(handle, newMac, g_deviceList.devices[j].Device, info->bus_type)) {
 							for (int k = 0; k < MAX_CONTROLLER_COUNT; ++k) {
-								std::shared_lock guard(g_controllers[k].lock);
+								std::lock_guard<std::shared_mutex> guard(g_controllers[k].lock);
 								if (g_controllers[k].macAddress == newMac) {
 									already = true;
 									break;
@@ -770,8 +761,7 @@ int watchFunc() {
 							}
 
 							if (!already) {
-								std::shared_lock guard(controller.lock);
-								hid_set_nonblocking(handle, 1);
+								std::lock_guard<std::shared_mutex> guard(controller.lock);
 								controller.handle = handle;
 								controller.macAddress = newMac;
 								controller.connectionType = info->bus_type;
@@ -878,7 +868,7 @@ int watchFunc() {
 
 					hid_free_enumeration(head);
 					{
-						std::shared_lock guard(controller.lock);
+						std::lock_guard<std::shared_mutex> guard(controller.lock);
 						if (!controller.macAddress.empty())
 							break;
 					}
@@ -888,7 +878,7 @@ int watchFunc() {
 				std::string cur;
 				bool ok{};
 				{
-					std::shared_lock guard(controller.lock);
+					std::lock_guard<std::shared_mutex> guard(controller.lock);
 					hid_device_info* info = hid_get_device_info(controller.handle);
 					bool res = duaLibUtils::getMacAddress(controller.handle, cur, info->product_id, info->bus_type);
 					if (ok) controller.macAddress = cur;
@@ -924,7 +914,6 @@ int scePadInit3(s_ScePadInitParam* param) {
 			controller.dualsenseLastOutputState.OutputPathSelect = 10; // Set it to something bigger than 4 so the audio path can reset back to 0 on first write
 		}
 
-		hid_init();
 		g_allowBluetooth = param->allowBT;
 		g_threadRunning = true;
 		g_readThread = std::thread(readFunc);
@@ -982,7 +971,7 @@ int scePadOpen(int userID, int unk1, int unk2) {
 	int count = 0;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle == 0 && controller.playerIndex != userID) {
 			if (firstUnused == -1)
@@ -1004,7 +993,7 @@ int scePadOpen(int userID, int unk1, int unk2) {
 	}
 
 	if (!wasAlreadyOpened) {
-		int handle = sizeof(duaLibUtils::Controller) * (firstUnused + 1);
+		int handle = sizeof(duaLibUtils::controller) * (firstUnused + 1);
 		g_controllers[firstUnused].sceHandle = handle;
 		g_controllers[firstUnused].opened = true;
 		g_controllers[firstUnused].playerIndex = userID;
@@ -1058,9 +1047,10 @@ int scePadReadState(int handle, s_ScePadData* data) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
+
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
 
 		s_ScePadData state = {};
@@ -1312,7 +1302,7 @@ int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* contain
 
 #if defined(_WIN32) || defined(_WIN64) // Windows only for now
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 		if (controller.sceHandle == handle && controller.id != "" && controller.idSize != 0) {
 			if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
 
@@ -1334,7 +1324,7 @@ int scePadSetLightBar(int handle, s_SceLightBar* lightbar) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
@@ -1366,7 +1356,8 @@ int scePadGetHandle(int userID, int unk1, int unk2) {
 	if (userID > MAX_CONTROLLER_COUNT || userID < 1) return SCE_PAD_ERROR_INVALID_PORT;
 
 	for (int i = 0; i < MAX_CONTROLLER_COUNT - 1; i++) {
-		std::shared_lock guard(g_controllers[i].lock);
+		std::lock_guard<std::shared_mutex> guard(g_controllers[i].lock);
+
 		if (g_controllers[i].playerIndex != userID) continue;
 		return g_controllers[i].sceHandle;
 	}
@@ -1378,7 +1369,7 @@ int scePadResetLightBar(int handle) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
@@ -1402,7 +1393,7 @@ int scePadSetTriggerEffect(int handle, ScePadTriggerEffectParam* triggerEffect) 
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
@@ -1456,7 +1447,7 @@ int scePadGetControllerBusType(int handle, int* busType) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
@@ -1472,7 +1463,7 @@ int scePadGetControllerInformation(int handle, s_ScePadInfo* info) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
@@ -1499,7 +1490,7 @@ int scePadGetControllerType(int handle, s_SceControllerType* controllerType) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
@@ -1515,7 +1506,7 @@ int scePadGetJackState(int handle, int* state) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
@@ -1536,7 +1527,7 @@ int scePadGetTriggerEffectState(int handle, int state[2]) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
@@ -1624,7 +1615,7 @@ int scePadIsControllerUpdateRequired(int handle) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
@@ -1659,7 +1650,7 @@ int scePadResetOrientation(int handle) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
@@ -1676,7 +1667,7 @@ int scePadSetAngularVelocityDeadbandState(int handle, bool state) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
@@ -1694,7 +1685,7 @@ int scePadSetAudioOutPath(int handle, int path) {
 	if (path > 4) return SCE_PAD_ERROR_INVALID_ARG;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
@@ -1716,7 +1707,7 @@ int scePadSetMotionSensorState(int handle, bool state) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) { return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED; }
@@ -1733,7 +1724,7 @@ int scePadSetTiltCorrectionState(int handle, bool state) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
@@ -1750,7 +1741,7 @@ int scePadSetVibration(int handle, s_ScePadVibrationParam* vibration) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
@@ -1775,7 +1766,7 @@ int scePadSetVibrationMode(int handle, int mode) {
 	if (mode <= 0) return SCE_PAD_ERROR_INVALID_ARG;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
@@ -1808,7 +1799,7 @@ int scePadSetVolumeGain(int handle, s_ScePadVolumeGain* gainSettings) {
 	if (!gainSettings || ((gainSettings->speakerVolume + 128) <= 126 || (gainSettings->micGain + 128) <= 126 || (gainSettings->headsetVolume + 128) <= 126)) return SCE_PAD_ERROR_INVALID_ARG;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
@@ -1834,7 +1825,7 @@ int scePadIsSupportedAudioFunction(int handle) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
@@ -1853,7 +1844,7 @@ int scePadClose(int handle) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
+		std::lock_guard<std::shared_mutex> guard(controller.lock);
 
 		if (controller.sceHandle != handle) continue;
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
@@ -1883,8 +1874,6 @@ int main() {
 	//int handle = scePadOpen(1, NULL, NULL, NULL);
 	int handle = scePadOpen(1, 0, 0);
 	int handle2 = scePadOpen(2, 0, 0);
-	int handle3 = scePadOpen(3, 0, 0);
-	int handle4 = scePadOpen(4, 0, 0);
 	//int handle4 = scePadOpen(4, 0, 0);
 
 	std::cout << handle << std::endl;

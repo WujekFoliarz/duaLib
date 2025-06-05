@@ -10,7 +10,7 @@ find_package(Threads REQUIRED)
 
 file(GLOB_RECURSE MY_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp")
 
-set(COMPILE_TO_EXE OFF CACHE BOOL "Compile to exe" FORCE) # Delete the out folder when you change this
+set(COMPILE_TO_EXE ON CACHE BOOL "Compile to exe" FORCE) # Delete the out folder when you change this
 
 if(COMPILE_TO_EXE)
 add_executable(${PROJECT_NAME} ${MY_SOURCES})
