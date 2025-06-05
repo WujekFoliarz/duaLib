@@ -401,7 +401,6 @@ constexpr std::array<s_SceLightBar, 4> g_playerColors = { {
 int readFunc() {
 #if defined(_WIN32) || defined(_WIN64)
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
-	timeBeginPeriod(1);
 #endif
 
 	while (g_threadRunning) {
@@ -418,7 +417,7 @@ int readFunc() {
 				dualsenseData::ReportIn31  inputBt = {};
 
 				int32_t res = -1;
-
+				hid_set_nonblocking(controller.handle, 1);
 				if (isBt)
 					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt), 0);
 				else
@@ -605,9 +604,9 @@ int readFunc() {
 
 				int res = -1;
 				if (isBt)
-					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt), 0);
+					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt));
 				else
-					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb), 0);
+					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb));
 
 				if (controller.failedReadCount >= 254) {
 					controller.valid = false;
@@ -709,16 +708,22 @@ int readFunc() {
 			std::this_thread::sleep_for(std::chrono::milliseconds(15));
 		}
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	#if defined(_WIN32) || defined(_WIN64)
+		timeBeginPeriod(1);
+	#endif
+		std::this_thread::sleep_for(std::chrono::nanoseconds(2));
+	#if defined(_WIN32) || defined(_WIN64)
+		timeEndPeriod(1);
+	#endif
 	}
-
-#if defined(_WIN32) || defined(_WIN64)
-	timeEndPeriod(1);
-#endif
 	return 0;
 }
 
 int watchFunc() {
+#if defined(_WIN32) || defined(_WIN64)
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+#endif
+
 	while (g_threadRunning) {
 		for (auto& controller : g_controllers) {
 			bool valid;
@@ -739,15 +744,13 @@ int watchFunc() {
 						bool already = false;
 
 						hid_device* handle = hid_open_path(info->path);
-						if (info->bus_type == HID_API_BUS_BLUETOOTH && !g_allowBluetooth)
-						{
+						if (info->bus_type == HID_API_BUS_BLUETOOTH && !g_allowBluetooth) {
 							goto skipController;
 						}
 
 						if (!handle) continue;
-						hid_set_nonblocking(handle, 1);
 
-						if (duaLibUtils::getMacAddress(handle, newMac, g_deviceList.devices[j].Device, info->bus_type)) {						
+						if (duaLibUtils::getMacAddress(handle, newMac, g_deviceList.devices[j].Device, info->bus_type)) {
 							for (int k = 0; k < MAX_CONTROLLER_COUNT; ++k) {
 								std::lock_guard<std::shared_mutex> guard(g_controllers[k].lock);
 								if (g_controllers[k].macAddress == newMac) {
@@ -758,6 +761,7 @@ int watchFunc() {
 
 							if (!already) {
 								std::lock_guard<std::shared_mutex> guard(controller.lock);
+								hid_set_nonblocking(handle, 1);
 								controller.handle = handle;
 								controller.macAddress = newMac;
 								controller.connectionType = info->bus_type;
@@ -854,7 +858,7 @@ int watchFunc() {
 								break;
 							}
 
-							skipController:
+						skipController:
 							hid_close(handle);
 						}
 						else {
@@ -892,7 +896,7 @@ int scePadInit() {
 	LOG("scePadInit called");
 	s_ScePadInitParam param = {};
 	param.allowBT = false;
-	
+
 	return scePadInit3(&param);
 }
 
@@ -910,6 +914,7 @@ int scePadInit3(s_ScePadInitParam* param) {
 			controller.dualsenseLastOutputState.OutputPathSelect = 10; // Set it to something bigger than 4 so the audio path can reset back to 0 on first write
 		}
 
+		hid_init();
 		g_allowBluetooth = param->allowBT;
 		g_threadRunning = true;
 		g_readThread = std::thread(readFunc);
