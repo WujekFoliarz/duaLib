@@ -1,4 +1,4 @@
-﻿#include <iostream>
+#include <iostream>
 #include <hidapi.h>
 #include <stdio.h>
 #include <wchar.h>
