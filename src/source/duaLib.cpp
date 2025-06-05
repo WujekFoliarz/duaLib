@@ -12,6 +12,7 @@
 #include <cmath>
 #include <shared_mutex>
 #include <fstream>
+#include <iomanip> 
 # define M_PI 3.14159265358979323846  
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -50,7 +51,7 @@
 std::ofstream logFile("duaLibLOG.txt");
 #endif
 
-#ifdef LOGGING  
+#ifdef LOGGING
 #define LOG(msg) do { \
 auto now = std::chrono::system_clock::now(); \
 auto now_c = std::chrono::system_clock::to_time_t(now); \
@@ -722,10 +723,6 @@ int readFunc() {
 		timeEndPeriod(1);
 	#endif
 	}
-
-#if defined(_WIN32) || defined(_WIN64)
-	timeEndPeriod(1);
-#endif
 	return 0;
 }
 
@@ -783,7 +780,6 @@ int watchFunc() {
 								controller.id = id;
 								controller.idSize = size;
 							#endif
-
 
 								uint16_t dev = g_deviceList.devices[j].Device;
 
@@ -872,11 +868,6 @@ int watchFunc() {
 					}
 
 					hid_free_enumeration(head);
-					{
-						std::shared_lock guard(controller.lock);
-						if (!controller.macAddress.empty())
-							break;
-					}
 				}
 			}
 			else {
