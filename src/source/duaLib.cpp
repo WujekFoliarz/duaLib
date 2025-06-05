@@ -1,4 +1,4 @@
-﻿#include <iostream>
+#include <iostream>
 #include <hidapi.h>
 #include <stdio.h>
 #include <wchar.h>
@@ -243,7 +243,7 @@ namespace duaLibUtils {
 	}
 #endif
 
-	bool GetID(const char* narrowPath, const char** ID, int* size) {
+	bool GetID(const char* narrowPath, const char** ID, uint32_t* size) {
 	#if defined(_WIN32) || defined(_WIN64)
 		GUID hidGuid;
 		GUID outContainerId;
@@ -345,7 +345,7 @@ namespace duaLibUtils {
 		std::string systemIdentifier = "";
 		std::string lastPath = "";
 		std::string id = "";
-		uint16_t idSize = 0;
+		uint32_t idSize = 0;
 		trigger L2 = {};
 		trigger R2 = {};
 		uint8_t triggerMask = 0;
@@ -776,8 +776,8 @@ int watchFunc() {
 								controller.productID = g_deviceList.devices[j].Device;
 
 								const char* id = {};
-								uint16_t size = 0;
-								duaLibUtils::GetID(info->path, &id, reinterpret_cast<int*>(&size));
+								uint32_t size = 0;
+								duaLibUtils::GetID(info->path, &id, &size);
 
 							#if defined(_WIN32) || defined(_WIN64)
 								controller.id = id;
