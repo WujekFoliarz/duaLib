@@ -12,6 +12,7 @@
 #include <cmath>
 #include <shared_mutex>
 #include <fstream>
+#include <iomanip> 
 # define M_PI 3.14159265358979323846  
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -50,7 +51,7 @@
 std::ofstream logFile("duaLibLOG.txt");
 #endif
 
-#ifdef LOGGING  
+#ifdef LOGGING
 #define LOG(msg) do { \
 auto now = std::chrono::system_clock::now(); \
 auto now_c = std::chrono::system_clock::to_time_t(now); \
@@ -243,7 +244,7 @@ namespace duaLibUtils {
 	}
 #endif
 
-	bool GetID(const char* narrowPath, const char** ID, int* size) {
+	bool GetID(const char* narrowPath, const char** ID, uint32_t* size) {
 	#if defined(_WIN32) || defined(_WIN64)
 		GUID hidGuid;
 		GUID outContainerId;
@@ -345,7 +346,7 @@ namespace duaLibUtils {
 		std::string systemIdentifier = "";
 		std::string lastPath = "";
 		std::string id = "";
-		uint16_t idSize = 0;
+		uint32_t idSize = 0;
 		trigger L2 = {};
 		trigger R2 = {};
 		uint8_t triggerMask = 0;
@@ -722,10 +723,6 @@ int readFunc() {
 		timeEndPeriod(1);
 	#endif
 	}
-
-#if defined(_WIN32) || defined(_WIN64)
-	timeEndPeriod(1);
-#endif
 	return 0;
 }
 
@@ -776,14 +773,13 @@ int watchFunc() {
 								controller.productID = g_deviceList.devices[j].Device;
 
 								const char* id = {};
-								uint16_t size = 0;
-								duaLibUtils::GetID(info->path, &id, reinterpret_cast<int*>(&size));
+								uint32_t size = 0;
+								duaLibUtils::GetID(info->path, &id, &size);
 
 							#if defined(_WIN32) || defined(_WIN64)
 								controller.id = id;
 								controller.idSize = size;
 							#endif
-
 
 								uint16_t dev = g_deviceList.devices[j].Device;
 
@@ -872,11 +868,6 @@ int watchFunc() {
 					}
 
 					hid_free_enumeration(head);
-					{
-						std::shared_lock guard(controller.lock);
-						if (!controller.macAddress.empty())
-							break;
-					}
 				}
 			}
 			else {
