@@ -13,7 +13,8 @@
 #include <shared_mutex>
 #include <fstream>
 #include <iomanip> 
-# define M_PI 3.14159265358979323846  
+
+#define M_PI 3.14159265358979323846  
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <Windows.h>
@@ -1115,21 +1116,21 @@ int scePadReadState(int handle, s_ScePadData* data) {
 				state.angularVelocity.z = controller.velocityDeadband == true && (state.angularVelocity.z < ANGULAR_VELOCITY_DEADBAND_MIN && state.angularVelocity.z > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : state.angularVelocity.z;
 
 				auto& q = controller.orientation;
-				s_SceFQuaternion ω = {
+				s_SceFQuaternion w = {
 					state.angularVelocity.x,
 					state.angularVelocity.y,
 					state.angularVelocity.z,
 					0.0f
 				};
 
-				s_SceFQuaternion qω = {
-				  q.w * ω.x + q.x * ω.w + q.y * ω.z - q.z * ω.y,
-				  q.w * ω.y + q.y * ω.w + q.z * ω.x - q.x * ω.z,
-				  q.w * ω.z + q.z * ω.w + q.x * ω.y - q.y * ω.x,
-				  q.w * ω.w - q.x * ω.x - q.y * ω.y - q.z * ω.z
+				s_SceFQuaternion qw = {
+				  q.w * w.x + q.x * w.w + q.y * w.z - q.z * w.y,
+				  q.w * w.y + q.y * w.w + q.z * w.x - q.x * w.z,
+				  q.w * w.z + q.z * w.w + q.x * w.y - q.y * w.x,
+				  q.w * w.w - q.x * w.x - q.y * w.y - q.z * w.z
 				};
 
-				s_SceFQuaternion qDot = { 0.5f * qω.x, 0.5f * qω.y, 0.5f * qω.z, 0.5f * qω.w };
+				s_SceFQuaternion qDot = { 0.5f * qw.x, 0.5f * qw.y, 0.5f * qw.z, 0.5f * qw.w };
 
 				q.x += qDot.x * controller.deltaTime;
 				q.y += qDot.y * controller.deltaTime;
@@ -1232,19 +1233,19 @@ int scePadReadState(int handle, s_ScePadData* data) {
 				state.angularVelocity.z = controller.velocityDeadband == true && (state.angularVelocity.z < ANGULAR_VELOCITY_DEADBAND_MIN && state.angularVelocity.z > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : state.angularVelocity.z;
 
 				auto& q = controller.orientation;
-				s_SceFQuaternion ω = { state.angularVelocity.x,
+				s_SceFQuaternion w = { state.angularVelocity.x,
 						   state.angularVelocity.y,
 						   state.angularVelocity.z,
 						   0.0f };
 
-				s_SceFQuaternion qω = {
-				  q.w * ω.x + q.x * ω.w + q.y * ω.z - q.z * ω.y,
-				  q.w * ω.y + q.y * ω.w + q.z * ω.x - q.x * ω.z,
-				  q.w * ω.z + q.z * ω.w + q.x * ω.y - q.y * ω.x,
-				  q.w * ω.w - q.x * ω.x - q.y * ω.y - q.z * ω.z
+				s_SceFQuaternion qw = {
+				  q.w * w.x + q.x * w.w + q.y * w.z - q.z * w.y,
+				  q.w * w.y + q.y * w.w + q.z * w.x - q.x * w.z,
+				  q.w * w.z + q.z * w.w + q.x * w.y - q.y * w.x,
+				  q.w * w.w - q.x * w.x - q.y * w.y - q.z * w.z
 				};
 
-				s_SceFQuaternion qDot = { 0.5f * qω.x, 0.5f * qω.y, 0.5f * qω.z, 0.5f * qω.w };
+				s_SceFQuaternion qDot = { 0.5f * qw.x, 0.5f * qw.y, 0.5f * qw.z, 0.5f * qw.w };
 
 				q.x += qDot.x * controller.deltaTime;
 				q.y += qDot.y * controller.deltaTime;
