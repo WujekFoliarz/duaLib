@@ -73,7 +73,8 @@ namespace duaLibUtils {
 			data.State.AllowLedColor = false;
 			data.State.AllowAudioControl = false;
 			data.State.AllowAudioControl2 = false;
-			data.State.AllowAudioMute = false;
+			data.State.AllowAudioMute = true;
+			data.State.MicMute = false;
 			data.State.AllowColorLightFadeAnimation = false;
 			data.State.AllowHapticLowPassFilter = false;
 			data.State.AllowHeadphoneVolume = false;
@@ -85,7 +86,7 @@ namespace duaLibUtils {
 			data.State.AllowSpeakerVolume = false;
 			data.State.UseRumbleNotHaptics = false;
 			data.State.RumbleEmulationLeft = 0;
-			data.State.RumbleEmulationRight = 0;
+			data.State.RumbleEmulationRight = 0;			
 
 			data.State.AllowLeftTriggerFFB = true;
 			data.State.AllowRightTriggerFFB = true;
@@ -127,6 +128,12 @@ namespace duaLibUtils {
 			report.State.RumbleLeft = 0;
 			report.State.RumbleRight = 0;
 			hid_write(handle, reinterpret_cast<unsigned char*>(&report), sizeof(report));
+
+			dualshock4Data::ReportFeatureInDongleSetAudio audioSetting = {};
+			audioSetting.ReportID = 0xE0;
+			audioSetting.Output = dualshock4Data::AudioOutput::Disabled;
+			hid_send_feature_report(handle, reinterpret_cast<unsigned char*>(&audioSetting), sizeof(audioSetting));
+
 			return true;
 		}
 		else if (handle && deviceType == DUALSHOCK4 && connectionType == HID_API_BUS_BLUETOOTH) {
@@ -431,7 +438,7 @@ int readFunc() {
 					controller.valid = false;
 				}
 
-				if (res <= 0) {
+				if (res == -1) {
 					controller.failedReadCount++;
 					continue;
 				}
@@ -439,12 +446,14 @@ int readFunc() {
 					controller.failedReadCount = 0;
 
 					if (!inputData.ButtonMute && controller.dualsenseCurInputState.ButtonMute) {
+						controller.dualsenseCurOutputState.AllowAudioMute = true;
 						controller.isMicMuted = !controller.isMicMuted;
 						controller.dualsenseCurOutputState.MuteLightMode = controller.isMicMuted ? dualsenseData::MuteLight::On : dualsenseData::MuteLight::Off;
 						controller.dualsenseCurOutputState.MicMute = controller.isMicMuted;
 						controller.dualsenseCurOutputState.AllowMuteLight = true;
 					}
 					else {
+						controller.dualsenseCurOutputState.AllowAudioMute = false;
 						controller.dualsenseCurOutputState.AllowMuteLight = false;
 					}
 
@@ -617,7 +626,7 @@ int readFunc() {
 					controller.valid = false;
 				}
 
-				if (res <= 0) {
+				if (res == -1) {
 					controller.failedReadCount++;
 					continue;
 				}
@@ -1880,7 +1889,9 @@ int main() {
 	l.g = 255;
 	scePadSetLightBar(handle, &l);
 	//scePadSetLightBar(handle2, &l);
-	scePadSetAudioOutPath(handle, SCE_PAD_AUDIO_PATH_ONLY_SPEAKER);
+	int res = scePadSetAudioOutPath(handle, SCE_PAD_AUDIO_PATH_ONLY_SPEAKER);
+	res = scePadSetAudioOutPath(handle2, SCE_PAD_AUDIO_PATH_ONLY_SPEAKER);
+	std::cout << res << std::endl;
 	//scePadSetAudioOutPath(handle2, SCE_PAD_AUDIO_PATH_ONLY_SPEAKER);;
 	ScePadTriggerEffectParam trigger = {};
 	trigger.triggerMask = SCE_PAD_TRIGGER_EFFECT_TRIGGER_MASK_L2 | SCE_PAD_TRIGGER_EFFECT_TRIGGER_MASK_R2;
@@ -1921,21 +1932,11 @@ int main() {
 	//scePadSetAngularVelocityDeadbandState(handle2, false);
 	scePadSetMotionSensorState(handle, true);
 	scePadSetVibrationMode(handle, SCE_PAD_RUMBLE_MODE);
-	scePadSetAudioOutPath(handle, SCE_PAD_AUDIO_PATH_ONLY_SPEAKER);
+	scePadSetAudioOutPath(handle2, SCE_PAD_AUDIO_PATH_ONLY_SPEAKER);
 	s_ScePadVolumeGain volume = {};
 	volume.speakerVolume = 100;
 	volume.micGain = 64;
-	//scePadSetVolumeGain(handle2, &volume);
-
-	while (true) {
-		s_ScePadData data = {};
-		scePadReadState(handle, &data);
-		//std::cout << "X: " << data.orientation.x << " Y: " << data.orientation.y << " Z: " << data.orientation.z << " W: " << data.orientation.w << std::endl;
-		if (data.bitmask_buttons & SCE_BM_CROSS) {
-			scePadResetOrientation(handle);
-			std::cout << "pushed " << std::endl;
-		}
-	}
+	scePadSetVolumeGain(handle, &volume);
 
 	getchar();
 
