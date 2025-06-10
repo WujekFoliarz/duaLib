@@ -1880,7 +1880,8 @@ int main() {
 	//int handle = scePadOpen(1, NULL, NULL, NULL);
 	int handle = scePadOpen(1, 0, 0);
 	int handle2 = scePadOpen(2, 0, 0);
-	//int handle4 = scePadOpen(4, 0, 0);
+	int handle3 = scePadOpen(3, 0, 0);
+	int handle4 = scePadOpen(4, 0, 0);
 
 	std::cout << handle << std::endl;
 	//std::cout << handle2 << std::endl;

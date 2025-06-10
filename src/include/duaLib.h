@@ -1,6 +1,8 @@
 ﻿#ifndef DUALIB_H
 #define DUALIB_H
 
+#include <stdint.h>
+
 #ifndef _SCE_PAD_TRIGGER_EFFECT_H
 #define _SCE_PAD_TRIGGER_EFFECT_H
 
