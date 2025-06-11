@@ -63,6 +63,102 @@ logFile << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S") << " - " <
 #endif
 
 namespace duaLibUtils {
+	struct trigger {
+		uint8_t force[11] = {};
+	};
+
+	struct controller {
+		std::shared_mutex lock{};
+		hid_device* handle = 0;
+		uint32_t sceHandle = 0;
+		uint8_t playerIndex = 0;
+		uint8_t deviceType = UNKNOWN;
+		uint16_t productID = 0;
+		uint8_t seqNo = 0;
+		uint8_t connectionType = 0;
+		bool opened = false;
+		bool isMicMuted = false;
+		bool wasDisconnected = false;
+		bool valid = false;
+		uint8_t failedReadCount = 0;
+		dualsenseData::USBGetStateData dualsenseCurInputState = {};
+		dualsenseData::SetStateData dualsenseLastOutputState = {};
+		dualsenseData::SetStateData dualsenseCurOutputState = {};
+		dualsenseData::ReportFeatureInVersion versionReport = {};
+		dualshock4Data::USBGetStateData dualshock4CurInputState = {};
+		dualshock4Data::BTSetStateData dualshock4LastOutputState = {};
+		dualshock4Data::BTSetStateData dualshock4CurOutputState = {};
+		dualshock4Data::ReportFeatureInDongleSetAudio dualshock4CurAudio = { 0xE0, 0, dualshock4Data::AudioOutput::Disabled };
+		dualshock4Data::ReportFeatureInDongleSetAudio dualshock4LastAudio = { 0xE0, 0, dualshock4Data::AudioOutput::Speaker };
+		std::string macAddress = "";
+		std::string systemIdentifier = "";
+		std::string lastPath = "";
+		std::string id = "";
+		uint32_t idSize = 0;
+		trigger L2 = {};
+		trigger R2 = {};
+		uint8_t triggerMask = 0;
+		uint32_t lastSensorTimestamp = 0;
+		bool velocityDeadband = false;
+		bool motionSensorState = true;
+		bool tiltCorrection = false;
+		s_SceFQuaternion orientation = { 0.0f,0.0f,0.0f,1.0f };
+		s_SceFVector3 lastAcceleration = { 0.0f,0.0f,0.0f };
+		float eInt[3] = { 0.0f, 0.0f, 0.0f };
+		std::chrono::steady_clock::time_point lastUpdate = {};
+		float deltaTime = 0.0f;
+		uint8_t touch1Count = 0;
+		uint8_t touch2Count = 0;
+		uint8_t touch1LastCount = 0;
+		uint8_t touch2LastCount = 0;
+		uint8_t touch1LastIndex = 0;
+		uint8_t touch2LastIndex = 0;
+	};
+
+	void setPlayerLights(duaLibUtils::controller& controller, bool oldStyle) {
+		switch (controller.playerIndex) {
+			case 1:
+				controller.dualsenseCurOutputState.PlayerLight1 = false;
+				controller.dualsenseCurOutputState.PlayerLight2 = false;
+				controller.dualsenseCurOutputState.PlayerLight3 = true;
+				controller.dualsenseCurOutputState.PlayerLight4 = false;
+				controller.dualsenseCurOutputState.PlayerLight5 = false;
+				break;
+
+			case 2:
+				controller.dualsenseCurOutputState.PlayerLight1 = false;
+				controller.dualsenseCurOutputState.PlayerLight2 = true; // Simplified, as oldStyle ? true : true is always true
+				controller.dualsenseCurOutputState.PlayerLight3 = false;
+				controller.dualsenseCurOutputState.PlayerLight4 = oldStyle ? true : false;
+				controller.dualsenseCurOutputState.PlayerLight5 = false;
+				break;
+
+			case 3:
+				controller.dualsenseCurOutputState.PlayerLight1 = true;
+				controller.dualsenseCurOutputState.PlayerLight2 = false;
+				controller.dualsenseCurOutputState.PlayerLight3 = true;
+				controller.dualsenseCurOutputState.PlayerLight4 = false;
+				controller.dualsenseCurOutputState.PlayerLight5 = oldStyle ? true : false;
+				break;
+
+			case 4:
+				controller.dualsenseCurOutputState.PlayerLight1 = true;
+				controller.dualsenseCurOutputState.PlayerLight2 = true;
+				controller.dualsenseCurOutputState.PlayerLight3 = false;
+				controller.dualsenseCurOutputState.PlayerLight4 = oldStyle ? true : false;
+				controller.dualsenseCurOutputState.PlayerLight5 = oldStyle ? true : false;
+				break;
+
+			default:
+				// Optional: Handle invalid playerIndex (e.g., set all lights to false or throw an exception)
+				controller.dualsenseCurOutputState.PlayerLight1 = false;
+				controller.dualsenseCurOutputState.PlayerLight2 = false;
+				controller.dualsenseCurOutputState.PlayerLight3 = false;
+				controller.dualsenseCurOutputState.PlayerLight4 = false;
+				controller.dualsenseCurOutputState.PlayerLight5 = false;
+				break;
+		}
+	}
 
 	bool letGo(hid_device* handle, uint8_t deviceType, uint8_t connectionType) {
 		if (handle && deviceType == DUALSENSE && (connectionType == HID_API_BUS_USB || connectionType == HID_API_BUS_UNKNOWN)) {
@@ -86,7 +182,7 @@ namespace duaLibUtils {
 			data.State.AllowSpeakerVolume = false;
 			data.State.UseRumbleNotHaptics = false;
 			data.State.RumbleEmulationLeft = 0;
-			data.State.RumbleEmulationRight = 0;			
+			data.State.RumbleEmulationRight = 0;
 
 			data.State.AllowLeftTriggerFFB = true;
 			data.State.AllowRightTriggerFFB = true;
@@ -322,58 +418,6 @@ namespace duaLibUtils {
 	#endif
 		return false;
 	}
-
-	struct trigger {
-		uint8_t force[11] = {};
-	};
-
-	struct controller {
-		std::shared_mutex lock{};
-		hid_device* handle = 0;
-		uint32_t sceHandle = 0;
-		uint8_t playerIndex = 0;
-		uint8_t deviceType = UNKNOWN;
-		uint16_t productID = 0;
-		uint8_t seqNo = 0;
-		uint8_t connectionType = 0;
-		bool opened = false;
-		bool isMicMuted = false;
-		bool wasDisconnected = false;
-		bool valid = false;
-		uint8_t failedReadCount = 0;
-		dualsenseData::USBGetStateData dualsenseCurInputState = {};
-		dualsenseData::SetStateData dualsenseLastOutputState = {};
-		dualsenseData::SetStateData dualsenseCurOutputState = {};
-		dualsenseData::ReportFeatureInVersion versionReport = {};
-		dualshock4Data::USBGetStateData dualshock4CurInputState = {};
-		dualshock4Data::BTSetStateData dualshock4LastOutputState = {};
-		dualshock4Data::BTSetStateData dualshock4CurOutputState = {};
-		dualshock4Data::ReportFeatureInDongleSetAudio dualshock4CurAudio = { 0xE0, 0, dualshock4Data::AudioOutput::Disabled };
-		dualshock4Data::ReportFeatureInDongleSetAudio dualshock4LastAudio = { 0xE0, 0, dualshock4Data::AudioOutput::Speaker };
-		std::string macAddress = "";
-		std::string systemIdentifier = "";
-		std::string lastPath = "";
-		std::string id = "";
-		uint32_t idSize = 0;
-		trigger L2 = {};
-		trigger R2 = {};
-		uint8_t triggerMask = 0;
-		uint32_t lastSensorTimestamp = 0;
-		bool velocityDeadband = false;
-		bool motionSensorState = true;
-		bool tiltCorrection = false;
-		s_SceFQuaternion orientation = { 0.0f,0.0f,0.0f,1.0f };
-		s_SceFVector3 lastAcceleration = { 0.0f,0.0f,0.0f };
-		float eInt[3] = { 0.0f, 0.0f, 0.0f };
-		std::chrono::steady_clock::time_point lastUpdate = {};
-		float deltaTime = 0.0f;
-		uint8_t touch1Count = 0;
-		uint8_t touch2Count = 0;
-		uint8_t touch1LastCount = 0;
-		uint8_t touch2LastCount = 0;
-		uint8_t touch1LastIndex = 0;
-		uint8_t touch2LastIndex = 0;
-	};
 }
 
 struct device {
@@ -413,13 +457,10 @@ int readFunc() {
 #endif
 
 	while (g_threadRunning) {
-		bool allInvalid = true;
-
 		for (auto& controller : g_controllers) {
 
 			if (controller.valid && controller.opened && controller.deviceType == DUALSENSE) {
 				hid_set_nonblocking(controller.handle, 1);
-				allInvalid = false;
 				bool isBt = controller.connectionType == HID_API_BUS_BLUETOOTH ? true : false;
 
 				dualsenseData::ReportIn01USB  inputUsb = {};
@@ -468,44 +509,12 @@ int readFunc() {
 					}
 
 					bool oldStyle = ((controller.versionReport.HardwareInfo & 0x00FFFF00) < 0x00000400);
-					switch (controller.playerIndex) {
-						case 1:
-							controller.dualsenseCurOutputState.PlayerLight1 = false;
-							controller.dualsenseCurOutputState.PlayerLight2 = false;
-							controller.dualsenseCurOutputState.PlayerLight3 = true;
-							controller.dualsenseCurOutputState.PlayerLight4 = false;
-							controller.dualsenseCurOutputState.PlayerLight5 = false;
-							break;
+					duaLibUtils::setPlayerLights(controller, oldStyle);
 
-						case 2:
-							controller.dualsenseCurOutputState.PlayerLight1 = false;
-							controller.dualsenseCurOutputState.PlayerLight2 = oldStyle ? true : true;
-							controller.dualsenseCurOutputState.PlayerLight3 = false;
-							controller.dualsenseCurOutputState.PlayerLight4 = oldStyle ? true : false;
-							controller.dualsenseCurOutputState.PlayerLight5 = false;
-							break;
-						case 3:
-							controller.dualsenseCurOutputState.PlayerLight1 = true;
-							controller.dualsenseCurOutputState.PlayerLight2 = false;
-							controller.dualsenseCurOutputState.PlayerLight3 = true;
-							controller.dualsenseCurOutputState.PlayerLight4 = false;
-							controller.dualsenseCurOutputState.PlayerLight5 = oldStyle ? true : false;
-							break;
-
-						case 4:
-							controller.dualsenseCurOutputState.PlayerLight1 = true;
-							controller.dualsenseCurOutputState.PlayerLight2 = true;
-							controller.dualsenseCurOutputState.PlayerLight3 = false;
-							controller.dualsenseCurOutputState.PlayerLight4 = oldStyle ? true : false;
-							controller.dualsenseCurOutputState.PlayerLight5 = oldStyle ? true : false;
-							break;
-					}
-
-					if (controller.dualsenseCurOutputState.PlayerLight1 != controller.dualsenseLastOutputState.PlayerLight1 ||
+					if ((controller.dualsenseCurOutputState.PlayerLight1 != controller.dualsenseLastOutputState.PlayerLight1 ||
 						controller.dualsenseCurOutputState.PlayerLight2 != controller.dualsenseLastOutputState.PlayerLight2 ||
 						controller.dualsenseCurOutputState.PlayerLight3 != controller.dualsenseLastOutputState.PlayerLight3 ||
-						controller.dualsenseCurOutputState.PlayerLight4 != controller.dualsenseLastOutputState.PlayerLight4 ||
-						controller.wasDisconnected) {
+						controller.dualsenseCurOutputState.PlayerLight4 != controller.dualsenseLastOutputState.PlayerLight4) || controller.wasDisconnected) {
 						controller.dualsenseCurOutputState.AllowPlayerIndicators = true;
 					}
 					else {
@@ -610,7 +619,6 @@ int readFunc() {
 				}
 			}
 			else if (controller.valid && controller.opened && controller.deviceType == DUALSHOCK4) {
-				allInvalid = false;
 				bool isBt = controller.connectionType == HID_API_BUS_BLUETOOTH ? true : false;
 
 				dualshock4Data::ReportIn01USB inputUsb = {};
@@ -714,16 +722,11 @@ int readFunc() {
 				}
 			}
 			else if (!controller.valid && controller.opened) {
-				controller.productID = 0;
-				controller.lastPath = "";
-				controller.macAddress = "";
 				controller.wasDisconnected = true;
+				controller.macAddress.clear();
 			}
 		}
 
-		if (allInvalid) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(15));
-		}
 
 	#if defined(_WIN32) || defined(_WIN64)
 		timeBeginPeriod(1);
@@ -738,41 +741,46 @@ int readFunc() {
 
 int watchFunc() {
 	while (g_threadRunning) {
-		for (auto& controller : g_controllers) {
-			bool valid;
-			{
-				std::shared_lock guard(controller.lock);
-				valid = duaLibUtils::isValid(controller.handle);
-			}
+		for (int j = 0; j < DEVICE_COUNT; ++j) {
+			hid_device_info* head = hid_enumerate(
+				g_deviceList.devices[j].Vendor,
+				g_deviceList.devices[j].Device
+			);
 
-			if (!valid) {
-				for (int j = 0; j < DEVICE_COUNT; ++j) {
-					hid_device_info* head = hid_enumerate(
-						g_deviceList.devices[j].Vendor,
-						g_deviceList.devices[j].Device
-					);
+			for (hid_device_info* info = head; info; info = info->next) {
+				std::string newMac;
+				bool already = false;
+				bool invalid = false;
 
-					for (hid_device_info* info = head; info; info = info->next) {
-						std::string newMac;
-						bool already = false;
+				hid_device* handle = hid_open_path(info->path);
+				if (info->bus_type == HID_API_BUS_BLUETOOTH && !g_allowBluetooth) {
+					hid_close(handle);
+					goto skipController;
+				}
 
-						hid_device* handle = hid_open_path(info->path);
-						if (info->bus_type == HID_API_BUS_BLUETOOTH && !g_allowBluetooth) {
-							goto skipController;
+				if (!handle) continue;
+
+				if (duaLibUtils::getMacAddress(handle, newMac, g_deviceList.devices[j].Device, info->bus_type)) {
+					for (int k = 0; k < MAX_CONTROLLER_COUNT; ++k) {
+						std::shared_lock guard(g_controllers[k].lock);
+						if (g_controllers[k].macAddress == newMac && duaLibUtils::isValid(g_controllers[k].handle)) {
+							already = true;
+							hid_close(handle);
+							break;
 						}
+					}
 
-						if (!handle) continue;
+					if (!already) {
 
-						if (duaLibUtils::getMacAddress(handle, newMac, g_deviceList.devices[j].Device, info->bus_type)) {
-							for (int k = 0; k < MAX_CONTROLLER_COUNT; ++k) {
-								std::shared_lock guard(g_controllers[k].lock);
-								if (g_controllers[k].macAddress == newMac) {
-									already = true;
-									break;
-								}
+						for (auto& controller : g_controllers) {
+							bool valid;
+							{
+								std::shared_lock guard(controller.lock);
+								valid = duaLibUtils::isValid(controller.handle);
 							}
 
-							if (!already) {
+							if (!valid) {
+
 								std::shared_lock guard(controller.lock);
 								controller.handle = handle;
 								controller.macAddress = newMac;
@@ -796,23 +804,8 @@ int watchFunc() {
 								if (dev == DUALSENSE_DEVICE_ID || dev == DUALSENSE_EDGE_DEVICE_ID) { controller.deviceType = DUALSENSE; }
 								else if (dev == DUALSHOCK4_DEVICE_ID || dev == DUALSHOCK4V2_DEVICE_ID || dev == DUALSHOCK4_WIRELESS_ADAPTOR_ID) { controller.deviceType = DUALSHOCK4; }
 
-								if (controller.deviceType == DUALSENSE && (info->bus_type == HID_API_BUS_USB || info->bus_type == HID_API_BUS_UNKNOWN)) {
+								if (controller.deviceType == DUALSENSE) {
 									duaLibUtils::getHardwareVersion(controller.handle, controller.versionReport);
-									dualsenseData::ReportOut02 report = {};
-									report.ReportID = 0x02;
-									report.State.AllowLedColor = true;
-									report.State.AllowMuteLight = true;
-									report.State.AllowRightTriggerFFB = true;
-									report.State.AllowLeftTriggerFFB = true;
-									report.State.AllowPlayerIndicators = true;
-									report.State.MuteLightMode = dualsenseData::MuteLight::Off;
-									report.State.LeftTriggerFFB[0] = (uint8_t)TriggerEffectType::Off;
-									report.State.RightTriggerFFB[0] = (uint8_t)TriggerEffectType::Off;
-									hid_write(
-										controller.handle,
-										reinterpret_cast<unsigned char*>(&report),
-										sizeof(report)
-									);
 								}
 								else if (controller.deviceType == DUALSENSE && info->bus_type == HID_API_BUS_BLUETOOTH) {
 									duaLibUtils::getHardwareVersion(controller.handle, controller.versionReport);
@@ -832,15 +825,6 @@ int watchFunc() {
 									uint32_t crc = compute(report.CRC.Buff, sizeof(report) - 4);
 									report.CRC.CRC = crc;
 
-									hid_write(controller.handle, reinterpret_cast<unsigned char*>(&report), sizeof(report));
-								}
-								else if (controller.deviceType == DUALSHOCK4 && (info->bus_type == HID_API_BUS_USB || info->bus_type == HID_API_BUS_UNKNOWN)) {
-									dualshock4Data::ReportIn05 report = {};
-									report.ReportID = 0x05;
-									report.State.LedGreen = 0;
-									report.State.LedRed = 0;
-									report.State.LedBlue = 0;
-									report.State.EnableLedUpdate = true;
 									hid_write(controller.handle, reinterpret_cast<unsigned char*>(&report), sizeof(report));
 								}
 								else if (controller.deviceType == DUALSHOCK4 && info->bus_type == HID_API_BUS_BLUETOOTH) {
@@ -868,28 +852,15 @@ int watchFunc() {
 
 								break;
 							}
-
-						skipController:
-							hid_close(handle);
-						}
-						else {
-							hid_close(handle);
-						}
+						}				
 					}
 
-					hid_free_enumeration(head);
+					skipController:
+					{}
 				}
 			}
-			else {
-				std::string cur;
-				bool ok{};
-				{
-					std::shared_lock guard(controller.lock);
-					hid_device_info* info = hid_get_device_info(controller.handle);
-					bool res = duaLibUtils::getMacAddress(controller.handle, cur, info->product_id, info->bus_type);
-					if (ok) controller.macAddress = cur;
-				}
-			}
+
+			hid_free_enumeration(head);
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
