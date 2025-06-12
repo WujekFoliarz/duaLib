@@ -25,6 +25,8 @@
 #include <initguid.h>
 #include <devpkey.h>
 #include <hidsdi.h>
+#include <codecvt>
+#include <locale>
 #else
 #include <clocale>
 #include <cstdlib>
@@ -1276,25 +1278,51 @@ int scePadReadState(int handle, s_ScePadData* data) {
 
 int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* containerIdInfo) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
+	if (!containerIdInfo) return SCE_PAD_ERROR_INVALID_ARG;
 
-#if defined(_WIN32) || defined(_WIN64) // Windows only for now
+#if defined(_WIN32) || defined(_WIN64)
 	for (auto& controller : g_controllers) {
-		std::shared_lock guard(controller.lock);
-		if (controller.sceHandle == handle && controller.id != "" && controller.idSize != 0) {
-			if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
+		std::string id;
+		size_t idSize = 0;
+		bool valid = false;
+		int sceHandle = 0;
 
-			s_ScePadContainerIdInfo info = {};
-			info.size = controller.idSize;
-			strncpy_s(info.id, controller.id.c_str(), sizeof(info.id) - 1);
-			info.id[sizeof(info.id) - 1] = '\0';
-			*containerIdInfo = info;
+		{
+			std::shared_lock guard(controller.lock);
+			if (controller.sceHandle != handle) continue;
+			id = controller.id;
+			idSize = controller.idSize;
+			valid = controller.valid;
+			sceHandle = controller.sceHandle;
+		}
+
+		if (sceHandle != handle || id.empty() || idSize == 0) continue;
+		if (!valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
+
+		try {
+			std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> converter;
+			std::u16string utf16 = converter.from_bytes(id);
+
+			size_t utf16ByteSize = utf16.size() * sizeof(char16_t);
+			if (utf16ByteSize + sizeof(char16_t) > sizeof(containerIdInfo->id)) {
+				return SCE_PAD_ERROR_INVALID_ARG; 
+			}
+
+			containerIdInfo->size = static_cast<uint32_t>(utf16ByteSize);
+			memcpy(containerIdInfo->id, utf16.data(), utf16ByteSize);
+
+			containerIdInfo->id[utf16ByteSize / sizeof(char16_t)] = u'\0';
+
 			return SCE_OK;
 		}
+		catch (const std::range_error&) {
+			return SCE_PAD_ERROR_INVALID_ARG;
+		}
 	}
-	containerIdInfo->size = 0;
-	containerIdInfo->id[0] = '\0';
-#endif
 	return SCE_PAD_ERROR_INVALID_HANDLE;
+#else
+	return SCE_PAD_ERROR_NOT_PERMITTED;
+#endif
 }
 
 int scePadSetLightBar(int handle, s_SceLightBar* lightbar) {
