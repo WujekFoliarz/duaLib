@@ -80,7 +80,7 @@ namespace duaLibUtils {
 		bool isMicMuted = false;
 		bool wasDisconnected = false;
 		bool valid = false;
-		uint8_t failedReadCount = 0;
+		uint32_t failedReadCount = 0;
 		dualsenseData::USBGetStateData dualsenseCurInputState = {};
 		dualsenseData::SetStateData dualsenseLastOutputState = {};
 		dualsenseData::SetStateData dualsenseCurOutputState = {};
@@ -475,7 +475,7 @@ int readFunc() {
 
 				dualsenseData::USBGetStateData inputData = isBt ? inputBt.Data.State.StateData : inputUsb.State;
 
-				if (controller.failedReadCount >= 254) {
+				if (controller.failedReadCount >= 5000) {
 					controller.valid = false;
 				}
 
@@ -518,7 +518,7 @@ int readFunc() {
 						controller.dualsenseCurOutputState.AllowPlayerIndicators = true;
 					}
 					else {
-						controller.dualsenseCurOutputState.AllowPlayerIndicators = false;
+						controller.dualsenseCurOutputState.AllowPlayerIndicators = true; // keep on true because it doesn't always light up
 					}
 
 					if (controller.wasDisconnected) {
@@ -630,7 +630,7 @@ int readFunc() {
 				else
 					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb), 0);
 
-				if (controller.failedReadCount >= 254) {
+				if (controller.failedReadCount >= 5000) {
 					controller.valid = false;
 				}
 
