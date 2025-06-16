@@ -294,7 +294,7 @@ typedef struct {
 #pragma pack(push, 1)
 struct s_ScePadContainerIdInfo {
 	uint32_t size;
-	char id[0x2000]; // UTF-16LE string
+	char id[0x2000]; // UTF-8 string
 };
 #pragma pack(pop)
 
@@ -304,7 +304,7 @@ enum s_SceControllerType {
 	DUALSENSE = 2
 };
 
-#endif //ORIGINAL_LIBSCEPAD_STRUCTS_H
+#endif // ORIGINAL_LIBSCEPAD_STRUCTS_H
 
 #define SCE_OK 0
 

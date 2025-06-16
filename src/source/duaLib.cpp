@@ -1280,46 +1280,22 @@ int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* contain
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
 	if (!containerIdInfo) return SCE_PAD_ERROR_INVALID_ARG;
 
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32) || defined(_WIN64) // Windows only for now
 	for (auto& controller : g_controllers) {
-		std::string id;
-		size_t idSize = 0;
-		bool valid = false;
-		int sceHandle = 0;
+		std::shared_lock guard(controller.lock);
+		if (controller.sceHandle == handle && controller.id != "" && controller.idSize != 0) {
+			if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
 
-		{
-			std::shared_lock guard(controller.lock);
-			if (controller.sceHandle != handle) continue;
-			id = controller.id;
-			idSize = controller.idSize;
-			valid = controller.valid;
-			sceHandle = controller.sceHandle;
-		}
-
-		if (sceHandle != handle || id.empty() || idSize == 0) continue;
-		if (!valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
-
-		try {
-			std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> converter;
-			std::u16string utf16 = converter.from_bytes(id);
-
-			size_t utf16ByteSize = utf16.size() * sizeof(char16_t);
-			if (utf16ByteSize + sizeof(char16_t) > sizeof(containerIdInfo->id)) {
-				return SCE_PAD_ERROR_INVALID_ARG; 
-			}
-
-			containerIdInfo->size = static_cast<uint32_t>(utf16ByteSize);
-			memcpy(containerIdInfo->id, utf16.data(), utf16ByteSize);
-
-			containerIdInfo->id[utf16ByteSize / sizeof(char16_t)] = u'\0';
-
+			s_ScePadContainerIdInfo info = {};
+			info.size = controller.idSize;
+			strncpy_s(info.id, controller.id.c_str(), sizeof(info.id) - 1);
+			info.id[sizeof(info.id) - 1] = '\0';
+			*containerIdInfo = info;
 			return SCE_OK;
 		}
-		catch (const std::range_error&) {
-			return SCE_PAD_ERROR_INVALID_ARG;
-		}
 	}
-	return SCE_PAD_ERROR_INVALID_HANDLE;
+	containerIdInfo->size = 0;
+	containerIdInfo->id[0] = '\0';
 #else
 	return SCE_PAD_ERROR_NOT_PERMITTED;
 #endif
@@ -1931,14 +1907,20 @@ int main() {
 	scePadSetAngularVelocityDeadbandState(handle, true);
 	//scePadSetAngularVelocityDeadbandState(handle2, false);
 	scePadSetMotionSensorState(handle, true);
-	scePadSetVibrationMode(handle, SCE_PAD_RUMBLE_MODE);
+
 	scePadSetAudioOutPath(handle2, SCE_PAD_AUDIO_PATH_ONLY_SPEAKER);
+	scePadSetVibrationMode(handle, SCE_PAD_RUMBLE_MODE);
+
 	s_ScePadVolumeGain volume = {};
 	volume.speakerVolume = 100;
 	volume.micGain = 64;
 	scePadSetVolumeGain(handle, &volume);
 
 	getchar();
+
+	s_ScePadContainerIdInfo cont = {};
+	scePadGetContainerIdInformation(handle, &cont);
+	std::cout << cont.id << std::endl;
 
 	scePadTerminate();
 	return 0;
