@@ -471,13 +471,13 @@ int readFunc() {
 				int32_t res = -1;
 
 				if (isBt)
-					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt), 0);
+					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt));
 				else
-					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb), 0);
+					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb));
 
 				dualsenseData::USBGetStateData inputData = isBt ? inputBt.Data.State.StateData : inputUsb.State;
 
-				if (controller.failedReadCount >= 5000) {
+				if (controller.failedReadCount >= 15) {
 					controller.valid = false;
 				}
 
@@ -595,6 +595,7 @@ int readFunc() {
 						}
 					}
 					else if (controller.connectionType == HID_API_BUS_BLUETOOTH) {
+						hid_set_nonblocking(controller.handle, 1);
 						dualsenseData::ReportOut31 btOutput = {};
 
 						btOutput.Data.ReportID = 0x31;
@@ -628,11 +629,11 @@ int readFunc() {
 
 				int res = -1;
 				if (isBt)
-					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt), 0);
+					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt));
 				else
-					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb), 0);
+					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb));
 
-				if (controller.failedReadCount >= 5000) {
+				if (controller.failedReadCount >= 15) {
 					controller.valid = false;
 				}
 
