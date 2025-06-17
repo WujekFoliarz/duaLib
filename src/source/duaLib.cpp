@@ -781,13 +781,11 @@ int watchFunc() {
 						}
 					}
 
-					// Remove duplicate controllers
-					for (auto& controller : g_controllers) {
-						int count = 0;
-						for (auto& controller2 : g_controllers) {
-							if (controller.macAddress == controller2.macAddress && count != 0) {
-								scePadClose(controller.sceHandle);
-							}
+					// Restore half valid controllers
+					for (auto& controller : g_controllers) {				
+						if (duaLibUtils::isValid(controller.handle) && !controller.valid) {
+							std::shared_lock guard(controller.lock);
+							controller.valid = true;
 						}
 					}
 
