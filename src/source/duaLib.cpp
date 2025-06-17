@@ -115,6 +115,7 @@ namespace duaLibUtils {
 		uint8_t touch2LastCount = 0;
 		uint8_t touch1LastIndex = 0;
 		uint8_t touch2LastIndex = 0;
+		bool started = false;
 	};
 
 	void setPlayerLights(duaLibUtils::controller& controller, bool oldStyle) {
@@ -152,7 +153,6 @@ namespace duaLibUtils {
 				break;
 
 			default:
-				// Optional: Handle invalid playerIndex (e.g., set all lights to false or throw an exception)
 				controller.dualsenseCurOutputState.PlayerLight1 = false;
 				controller.dualsenseCurOutputState.PlayerLight2 = false;
 				controller.dualsenseCurOutputState.PlayerLight3 = false;
@@ -456,24 +456,26 @@ constexpr std::array<s_SceLightBar, 4> g_playerColors = { {
 int readFunc() {
 #if defined(_WIN32) || defined(_WIN64)
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+	timeBeginPeriod(1);
 #endif
 
 	while (g_threadRunning) {
-		for (auto& controller : g_controllers) {
+		bool allInvalid = true;
 
+		for (auto& controller : g_controllers) {
 			if (controller.valid && controller.opened && controller.deviceType == DUALSENSE) {
-				hid_set_nonblocking(controller.handle, 1);
+				allInvalid = false;
 				bool isBt = controller.connectionType == HID_API_BUS_BLUETOOTH ? true : false;
 
 				dualsenseData::ReportIn01USB  inputUsb = {};
 				dualsenseData::ReportIn31  inputBt = {};
 
-				int32_t res = -1;
+				uint32_t res = -1;
 
-				if (isBt)
-					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt));
-				else
-					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb));
+				if (isBt) 
+					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt), 0);			
+				else 
+					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb), 0);	
 
 				dualsenseData::USBGetStateData inputData = isBt ? inputBt.Data.State.StateData : inputUsb.State;
 
@@ -595,7 +597,6 @@ int readFunc() {
 						}
 					}
 					else if (controller.connectionType == HID_API_BUS_BLUETOOTH) {
-						hid_set_nonblocking(controller.handle, 1);
 						dualsenseData::ReportOut31 btOutput = {};
 
 						btOutput.Data.ReportID = 0x31;
@@ -610,6 +611,7 @@ int readFunc() {
 					}
 
 					if (res > 0) {
+						std::shared_lock guard(controller.lock);
 						controller.wasDisconnected = false;
 						//std::cout << "Controller idx " << controller.sceHandle << " path=" << controller.macAddress << " connType=" << (int)controller.connectionType << std::endl;
 					}
@@ -622,16 +624,18 @@ int readFunc() {
 				}
 			}
 			else if (controller.valid && controller.opened && controller.deviceType == DUALSHOCK4) {
+				allInvalid = false;
 				bool isBt = controller.connectionType == HID_API_BUS_BLUETOOTH ? true : false;
 
 				dualshock4Data::ReportIn01USB inputUsb = {};
 				dualshock4Data::ReportIn01BT inputBt = {};
 
-				int res = -1;
+				uint32_t res = -1;
+
 				if (isBt)
-					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt));
+					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt), 0);
 				else
-					res = hid_read(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb));
+					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputUsb), sizeof(inputUsb), 0);
 
 				if (controller.failedReadCount >= 15) {
 					controller.valid = false;
@@ -725,25 +729,28 @@ int readFunc() {
 				}
 			}
 			else if (!controller.valid && controller.opened) {
+				std::shared_lock guard(controller.lock);
 				controller.wasDisconnected = true;
-				controller.macAddress.clear();
 			}
 		}
 
+		std::this_thread::sleep_for(std::chrono::nanoseconds(300));
 
-	#if defined(_WIN32) || defined(_WIN64)
-		timeBeginPeriod(1);
-	#endif
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
-	#if defined(_WIN32) || defined(_WIN64)
-		timeEndPeriod(1);
-	#endif
+		if (allInvalid) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
 	}
 	return 0;
 }
 
 int watchFunc() {
+#if defined(_WIN32) || defined(_WIN64)
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+#endif
+
 	while (g_threadRunning) {
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+
 		for (int j = 0; j < DEVICE_COUNT; ++j) {
 			hid_device_info* head = hid_enumerate(
 				g_deviceList.devices[j].Vendor,
@@ -754,6 +761,7 @@ int watchFunc() {
 				std::string newMac;
 				bool already = false;
 				bool invalid = false;
+				bool started = false;
 
 				hid_device* handle = hid_open_path(info->path);
 				if (info->bus_type == HID_API_BUS_BLUETOOTH && !g_allowBluetooth) {
@@ -773,8 +781,17 @@ int watchFunc() {
 						}
 					}
 
-					if (!already) {
+					// Remove duplicate controllers
+					for (auto& controller : g_controllers) {
+						int count = 0;
+						for (auto& controller2 : g_controllers) {
+							if (controller.macAddress == controller2.macAddress && count != 0) {
+								scePadClose(controller.sceHandle);
+							}
+						}
+					}
 
+					if (!already) {
 						for (auto& controller : g_controllers) {
 							bool valid;
 							{
@@ -785,6 +802,7 @@ int watchFunc() {
 							if (!valid) {
 
 								std::shared_lock guard(controller.lock);
+								controller.started = true;
 								controller.handle = handle;
 								controller.macAddress = newMac;
 								controller.connectionType = info->bus_type;
@@ -855,10 +873,10 @@ int watchFunc() {
 
 								break;
 							}
-						}				
+						}
 					}
 
-					skipController:
+				skipController:
 					{}
 				}
 			}
@@ -1025,6 +1043,7 @@ static double to_radps(int v) {
 
 int scePadReadState(int handle, s_ScePadData* data) {
 	if (!g_initialized) return SCE_PAD_ERROR_NOT_INITIALIZED;
+	if (!data) return SCE_PAD_ERROR_INVALID_ARG;
 
 	for (auto& controller : g_controllers) {
 		std::shared_lock guard(controller.lock);
@@ -1032,8 +1051,6 @@ int scePadReadState(int handle, s_ScePadData* data) {
 		if (controller.sceHandle != handle) continue;
 
 		if (!controller.valid) return SCE_PAD_ERROR_DEVICE_NOT_CONNECTED;
-
-		s_ScePadData state = {};
 
 		if (controller.deviceType == DUALSENSE) {
 		#pragma region buttons
@@ -1065,19 +1082,19 @@ int scePadReadState(int handle, s_ScePadData* data) {
 				if (controller.dualsenseCurInputState.ButtonHome) bitmaskButtons |= 0x00010000;
 			}
 
-			state.bitmask_buttons = bitmaskButtons;
+			data->bitmask_buttons = bitmaskButtons;
 		#pragma endregion
 
 		#pragma region sticks
-			state.LeftStick.X = controller.dualsenseCurInputState.LeftStickX;
-			state.LeftStick.Y = controller.dualsenseCurInputState.LeftStickY;
-			state.RightStick.X = controller.dualsenseCurInputState.RightStickX;
-			state.RightStick.Y = controller.dualsenseCurInputState.RightStickY;
+			data->LeftStick.X = controller.dualsenseCurInputState.LeftStickX;
+			data->LeftStick.Y = controller.dualsenseCurInputState.LeftStickY;
+			data->RightStick.X = controller.dualsenseCurInputState.RightStickX;
+			data->RightStick.Y = controller.dualsenseCurInputState.RightStickY;
 		#pragma endregion
 
 		#pragma region triggers
-			state.L2_Analog = controller.dualsenseCurInputState.TriggerLeft;
-			state.R2_Analog = controller.dualsenseCurInputState.TriggerRight;
+			data->L2_Analog = controller.dualsenseCurInputState.TriggerLeft;
+			data->R2_Analog = controller.dualsenseCurInputState.TriggerRight;
 		#pragma endregion
 
 		#pragma region gyro		
@@ -1086,23 +1103,23 @@ int scePadReadState(int handle, s_ScePadData* data) {
 				controller.deltaTime = std::chrono::duration_cast<std::chrono::microseconds>(now - controller.lastUpdate).count() / 1000000.0f;
 				controller.lastUpdate = now;
 
-				state.acceleration.x = to_mpss((float)controller.dualsenseCurInputState.AccelerometerX);
-				state.acceleration.y = to_mpss((float)controller.dualsenseCurInputState.AccelerometerY);
-				state.acceleration.z = to_mpss((float)controller.dualsenseCurInputState.AccelerometerZ);
+				data->acceleration.x = to_mpss((float)controller.dualsenseCurInputState.AccelerometerX);
+				data->acceleration.y = to_mpss((float)controller.dualsenseCurInputState.AccelerometerY);
+				data->acceleration.z = to_mpss((float)controller.dualsenseCurInputState.AccelerometerZ);
 
-				state.angularVelocity.x = to_radps((float)controller.dualsenseCurInputState.AngularVelocityX);
-				state.angularVelocity.y = to_radps((float)controller.dualsenseCurInputState.AngularVelocityY);
-				state.angularVelocity.z = to_radps((float)controller.dualsenseCurInputState.AngularVelocityZ);
+				data->angularVelocity.x = to_radps((float)controller.dualsenseCurInputState.AngularVelocityX);
+				data->angularVelocity.y = to_radps((float)controller.dualsenseCurInputState.AngularVelocityY);
+				data->angularVelocity.z = to_radps((float)controller.dualsenseCurInputState.AngularVelocityZ);
 
-				state.angularVelocity.x = controller.velocityDeadband == true && (state.angularVelocity.x < ANGULAR_VELOCITY_DEADBAND_MIN && state.angularVelocity.x > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : state.angularVelocity.x;
-				state.angularVelocity.y = controller.velocityDeadband == true && (state.angularVelocity.y < ANGULAR_VELOCITY_DEADBAND_MIN && state.angularVelocity.y > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : state.angularVelocity.y;
-				state.angularVelocity.z = controller.velocityDeadband == true && (state.angularVelocity.z < ANGULAR_VELOCITY_DEADBAND_MIN && state.angularVelocity.z > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : state.angularVelocity.z;
+				data->angularVelocity.x = controller.velocityDeadband == true && (data->angularVelocity.x < ANGULAR_VELOCITY_DEADBAND_MIN && data->angularVelocity.x > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : data->angularVelocity.x;
+				data->angularVelocity.y = controller.velocityDeadband == true && (data->angularVelocity.y < ANGULAR_VELOCITY_DEADBAND_MIN && data->angularVelocity.y > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : data->angularVelocity.y;
+				data->angularVelocity.z = controller.velocityDeadband == true && (data->angularVelocity.z < ANGULAR_VELOCITY_DEADBAND_MIN && data->angularVelocity.z > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : data->angularVelocity.z;
 
 				auto& q = controller.orientation;
 				s_SceFQuaternion w = {
-					state.angularVelocity.x,
-					state.angularVelocity.y,
-					state.angularVelocity.z,
+					data->angularVelocity.x,
+					data->angularVelocity.y,
+					data->angularVelocity.z,
 					0.0f
 				};
 
@@ -1123,33 +1140,33 @@ int scePadReadState(int handle, s_ScePadData* data) {
 				float norm = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
 				q.x /= norm; q.y /= norm; q.z /= norm; q.w /= norm;
 
-				state.orientation.x = q.x;
-				state.orientation.y = q.z;
-				state.orientation.z = q.y; // yes this is swapped on purpose don't touch it
-				state.orientation.w = q.w;
+				data->orientation.x = q.x;
+				data->orientation.y = q.z;
+				data->orientation.z = q.y; // yes this is swapped on purpose don't touch it
+				data->orientation.w = q.w;
 			}
 		#pragma endregion
 
 		#pragma region touchpad
-			state.touchData.touchNum = (controller.dualsenseCurInputState.touchData.Finger[0].NotTouching > 0 ? 0 : 1) + (controller.dualsenseCurInputState.touchData.Finger[1].NotTouching > 0 ? 0 : 1);
+			data->touchData.touchNum = (controller.dualsenseCurInputState.touchData.Finger[0].NotTouching > 0 ? 0 : 1) + (controller.dualsenseCurInputState.touchData.Finger[1].NotTouching > 0 ? 0 : 1);
 
-			state.touchData.touch[0].id = controller.dualsenseCurInputState.touchData.Finger[0].Index;
-			state.touchData.touch[0].x = controller.dualsenseCurInputState.touchData.Finger[0].FingerX;
-			state.touchData.touch[0].y = controller.dualsenseCurInputState.touchData.Finger[0].FingerY;
+			data->touchData.touch[0].id = controller.dualsenseCurInputState.touchData.Finger[0].Index;
+			data->touchData.touch[0].x = controller.dualsenseCurInputState.touchData.Finger[0].FingerX;
+			data->touchData.touch[0].y = controller.dualsenseCurInputState.touchData.Finger[0].FingerY;
 
-			state.touchData.touch[1].id = controller.dualsenseCurInputState.touchData.Finger[1].Index;
-			state.touchData.touch[1].x = controller.dualsenseCurInputState.touchData.Finger[1].FingerX;
-			state.touchData.touch[1].y = controller.dualsenseCurInputState.touchData.Finger[1].FingerY;
+			data->touchData.touch[1].id = controller.dualsenseCurInputState.touchData.Finger[1].Index;
+			data->touchData.touch[1].x = controller.dualsenseCurInputState.touchData.Finger[1].FingerX;
+			data->touchData.touch[1].y = controller.dualsenseCurInputState.touchData.Finger[1].FingerY;
 		#pragma endregion
 
 		#pragma region misc
-			state.connected = controller.valid;
-			state.timestamp = controller.dualsenseCurInputState.DeviceTimeStamp;
-			state.extUnitData = {};
-			state.connectionCount = 0;
+			data->connected = controller.valid;
+			data->timestamp = controller.dualsenseCurInputState.DeviceTimeStamp;
+			data->extUnitData = {};
+			data->connectionCount = 0;
 			for (int j = 0; j < 12; j++)
-				state.deviceUniqueData[j] = {};
-			state.deviceUniqueDataLen = sizeof(state.deviceUniqueData);
+				data->deviceUniqueData[j] = {};
+			data->deviceUniqueDataLen = sizeof(data->deviceUniqueData);
 		#pragma endregion
 		}
 		else if (controller.deviceType == DUALSHOCK4) {
@@ -1182,19 +1199,19 @@ int scePadReadState(int handle, s_ScePadData* data) {
 				if (controller.dualshock4CurInputState.ButtonHome) bitmaskButtons |= 0x00010000;
 			}
 
-			state.bitmask_buttons = bitmaskButtons;
+			data->bitmask_buttons = bitmaskButtons;
 		#pragma endregion
 
 		#pragma region sticks
-			state.LeftStick.X = controller.dualshock4CurInputState.LeftStickX;
-			state.LeftStick.Y = controller.dualshock4CurInputState.LeftStickY;
-			state.RightStick.X = controller.dualshock4CurInputState.RightStickX;
-			state.RightStick.Y = controller.dualshock4CurInputState.RightStickY;
+			data->LeftStick.X = controller.dualshock4CurInputState.LeftStickX;
+			data->LeftStick.Y = controller.dualshock4CurInputState.LeftStickY;
+			data->RightStick.X = controller.dualshock4CurInputState.RightStickX;
+			data->RightStick.Y = controller.dualshock4CurInputState.RightStickY;
 		#pragma endregion
 
 		#pragma region triggers
-			state.L2_Analog = controller.dualshock4CurInputState.TriggerLeft;
-			state.R2_Analog = controller.dualshock4CurInputState.TriggerRight;
+			data->L2_Analog = controller.dualshock4CurInputState.TriggerLeft;
+			data->R2_Analog = controller.dualshock4CurInputState.TriggerRight;
 		#pragma endregion
 
 		#pragma region gyro		
@@ -1203,22 +1220,22 @@ int scePadReadState(int handle, s_ScePadData* data) {
 				controller.deltaTime = std::chrono::duration_cast<std::chrono::microseconds>(now - controller.lastUpdate).count() / 1000000.0f;
 				controller.lastUpdate = now;
 
-				state.acceleration.x = to_mpss((float)controller.dualshock4CurInputState.AccelerometerX);
-				state.acceleration.y = to_mpss((float)controller.dualshock4CurInputState.AccelerometerY);
-				state.acceleration.z = to_mpss((float)controller.dualshock4CurInputState.AccelerometerZ);
+				data->acceleration.x = to_mpss((float)controller.dualshock4CurInputState.AccelerometerX);
+				data->acceleration.y = to_mpss((float)controller.dualshock4CurInputState.AccelerometerY);
+				data->acceleration.z = to_mpss((float)controller.dualshock4CurInputState.AccelerometerZ);
 
-				state.angularVelocity.x = to_radps((float)controller.dualshock4CurInputState.AngularVelocityX);
-				state.angularVelocity.y = to_radps((float)controller.dualshock4CurInputState.AngularVelocityY);
-				state.angularVelocity.z = to_radps((float)controller.dualshock4CurInputState.AngularVelocityZ);
+				data->angularVelocity.x = to_radps((float)controller.dualshock4CurInputState.AngularVelocityX);
+				data->angularVelocity.y = to_radps((float)controller.dualshock4CurInputState.AngularVelocityY);
+				data->angularVelocity.z = to_radps((float)controller.dualshock4CurInputState.AngularVelocityZ);
 
-				state.angularVelocity.x = controller.velocityDeadband == true && (state.angularVelocity.x < ANGULAR_VELOCITY_DEADBAND_MIN && state.angularVelocity.x > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : state.angularVelocity.x;
-				state.angularVelocity.y = controller.velocityDeadband == true && (state.angularVelocity.y < ANGULAR_VELOCITY_DEADBAND_MIN && state.angularVelocity.y > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : state.angularVelocity.y;
-				state.angularVelocity.z = controller.velocityDeadband == true && (state.angularVelocity.z < ANGULAR_VELOCITY_DEADBAND_MIN && state.angularVelocity.z > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : state.angularVelocity.z;
+				data->angularVelocity.x = controller.velocityDeadband == true && (data->angularVelocity.x < ANGULAR_VELOCITY_DEADBAND_MIN && data->angularVelocity.x > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : data->angularVelocity.x;
+				data->angularVelocity.y = controller.velocityDeadband == true && (data->angularVelocity.y < ANGULAR_VELOCITY_DEADBAND_MIN && data->angularVelocity.y > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : data->angularVelocity.y;
+				data->angularVelocity.z = controller.velocityDeadband == true && (data->angularVelocity.z < ANGULAR_VELOCITY_DEADBAND_MIN && data->angularVelocity.z > -ANGULAR_VELOCITY_DEADBAND_MIN) ? 0 : data->angularVelocity.z;
 
 				auto& q = controller.orientation;
-				s_SceFQuaternion w = { state.angularVelocity.x,
-						   state.angularVelocity.y,
-						   state.angularVelocity.z,
+				s_SceFQuaternion w = { data->angularVelocity.x,
+						   data->angularVelocity.y,
+						   data->angularVelocity.z,
 						   0.0f };
 
 				s_SceFQuaternion qw = {
@@ -1238,38 +1255,36 @@ int scePadReadState(int handle, s_ScePadData* data) {
 				float norm = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
 				q.x /= norm; q.y /= norm; q.z /= norm; q.w /= norm;
 
-				state.orientation.x = q.x;
-				state.orientation.y = q.z;
-				state.orientation.z = q.y;  // yes this is swapped on purpose don't touch it
-				state.orientation.w = q.w;
+				data->orientation.x = q.x;
+				data->orientation.y = q.z;
+				data->orientation.z = q.y;  // yes this is swapped on purpose don't touch it
+				data->orientation.w = q.w;
 			}
 		#pragma endregion
 
 		#pragma region touchpad
-			state.touchData.touchNum = (controller.dualshock4CurInputState.Finger1Active > 0 ? 0 : 1) + (controller.dualshock4CurInputState.Finger2Active > 0 ? 0 : 1);
+			data->touchData.touchNum = (controller.dualshock4CurInputState.Finger1Active > 0 ? 0 : 1) + (controller.dualshock4CurInputState.Finger2Active > 0 ? 0 : 1);
 
-			state.touchData.touch[0].id = controller.dualshock4CurInputState.Finger1ID;
-			state.touchData.touch[0].x = controller.dualshock4CurInputState.Finger1X;
-			state.touchData.touch[0].y = controller.dualshock4CurInputState.Finger1Y;
+			data->touchData.touch[0].id = controller.dualshock4CurInputState.Finger1ID;
+			data->touchData.touch[0].x = controller.dualshock4CurInputState.Finger1X;
+			data->touchData.touch[0].y = controller.dualshock4CurInputState.Finger1Y;
 
-			state.touchData.touch[1].id = controller.dualshock4CurInputState.Finger2ID;
-			state.touchData.touch[1].x = controller.dualshock4CurInputState.Finger2X;
-			state.touchData.touch[1].y = controller.dualshock4CurInputState.Finger2Y;
+			data->touchData.touch[1].id = controller.dualshock4CurInputState.Finger2ID;
+			data->touchData.touch[1].x = controller.dualshock4CurInputState.Finger2X;
+			data->touchData.touch[1].y = controller.dualshock4CurInputState.Finger2Y;
 		#pragma endregion
 
 		#pragma region misc
-			state.connected = controller.valid;
-			state.timestamp = controller.dualshock4CurInputState.Timestamp;
-			state.extUnitData = {};
-			state.connectionCount = 0;
+			data->connected = controller.valid;
+			data->timestamp = controller.dualshock4CurInputState.Timestamp;
+			data->extUnitData = {};
+			data->connectionCount = 0;
 			for (int j = 0; j < 12; j++)
-				state.deviceUniqueData[j] = {};
-			state.deviceUniqueDataLen = sizeof(state.deviceUniqueData);
+				data->deviceUniqueData[j] = {};
+			data->deviceUniqueDataLen = sizeof(data->deviceUniqueData);
 		#pragma endregion
 
 		}
-
-		*data = state;
 
 		return SCE_OK;
 	}
@@ -1297,6 +1312,7 @@ int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* contain
 	}
 	containerIdInfo->size = 0;
 	containerIdInfo->id[0] = '\0';
+	return SCE_OK;
 #else
 	return SCE_PAD_ERROR_NOT_PERMITTED;
 #endif
