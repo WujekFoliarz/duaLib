@@ -50,20 +50,6 @@
 #define DUALSENSE 2
 #define ANGULAR_VELOCITY_DEADBAND_MIN 0.017453292
 
-#ifdef LOGGING
-std::ofstream logFile("duaLibLOG.txt");
-#endif
-
-#ifdef LOGGING
-#define LOG(msg) do { \
-auto now = std::chrono::system_clock::now(); \
-auto now_c = std::chrono::system_clock::to_time_t(now); \
-logFile << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S") << " - " << msg << std::endl; \
-} while (0)
-#else
-#define LOG(msg) do {} while (0)
-#endif
-
 namespace duaLibUtils {
 	struct trigger {
 		uint8_t force[11] = {};
@@ -889,7 +875,6 @@ int watchFunc() {
 }
 
 int scePadInit() {
-	LOG("scePadInit called");
 	s_ScePadInitParam param = {};
 	param.allowBT = false;
 
@@ -897,7 +882,6 @@ int scePadInit() {
 }
 
 int scePadInit3(s_ScePadInitParam* param) {
-	LOG("scePadInit3 called");
 	if (!param) return SCE_PAD_ERROR_INVALID_ARG;
 
 	if (!g_initialized) {
@@ -919,7 +903,6 @@ int scePadInit3(s_ScePadInitParam* param) {
 		g_initialized = true;
 	}
 
-	LOG("scePadInit3 returned SCE_OK");
 	return SCE_OK;
 }
 

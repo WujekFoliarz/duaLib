@@ -20,14 +20,6 @@ add_library(${PROJECT_NAME} SHARED ${MY_SOURCES})
 target_compile_definitions(duaLib PUBLIC COMPILE_TO_EXE=0)
 endif()
 
-set(LOGGING OFF CACHE BOOL "Enable logging" FORCE) # Delete the out folder when you change this
-
-if(LOGGING)
-target_compile_definitions(duaLib PUBLIC LOGGING=1)
-else()
-target_compile_definitions(duaLib PUBLIC LOGGING=0)
-endif()
-
 set_target_properties(duaLib PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(${PROJECT_NAME}
   PUBLIC
