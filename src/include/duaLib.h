@@ -363,6 +363,10 @@ enum s_SceControllerType {
 #define SCE_PAD_HAPTICS_MODE 0x01
 #define SCE_PAD_RUMBLE_MODE 0x02
 
+// Bus types
+#define SCE_PAD_BUSTYPE_USB 0x01
+#define SCE_PAD_BUSTYPE_BT 0x02
+
 struct s_ScePadInitParam {
 	uint8_t  customAllocAndFree[16]; // Can be left unused
 	uint32_t allowBT;         // Set to 1 to allow Bluetooth connections, 0 to disable
