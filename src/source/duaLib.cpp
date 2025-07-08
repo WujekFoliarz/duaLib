@@ -37,7 +37,7 @@
 #include "crc.h"
 #include "triggerFactory.h"
 
-#define DEVICE_COUNT 4 
+#define DEVICE_COUNT 4
 #define MAX_CONTROLLER_COUNT 4
 #define VENDOR_ID 0x54c
 #define DUALSENSE_DEVICE_ID 0x0ce6
@@ -750,6 +750,7 @@ int watchFunc() {
 				bool started = false;
 
 				hid_device* handle = hid_open_path(info->path);
+
 				if (info->bus_type == HID_API_BUS_BLUETOOTH && !g_allowBluetooth) {
 					hid_close(handle);
 					goto skipController;

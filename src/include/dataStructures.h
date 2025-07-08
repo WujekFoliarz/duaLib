@@ -373,7 +373,9 @@ namespace dualsenseData {
 				RumbleEmulationRight == other.RumbleEmulationRight &&
 				VolumeSpeaker == other.VolumeSpeaker &&
 				VolumeMic == other.VolumeMic &&
-				VolumeHeadphones == other.VolumeHeadphones;
+				VolumeHeadphones == other.VolumeHeadphones &&
+				lightBrightness == other.lightBrightness &&
+				OutputPathSelect == other.OutputPathSelect;
 		}
 
 		bool operator!=(const SetStateData& other) const {
