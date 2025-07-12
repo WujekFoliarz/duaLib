@@ -456,7 +456,7 @@ int readFunc() {
 				dualsenseData::ReportIn01USB  inputUsb = {};
 				dualsenseData::ReportIn31  inputBt = {};
 
-				uint32_t res = -1;
+				int32_t res = -1;
 
 				if (isBt) 
 					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt), 0);			
@@ -616,7 +616,7 @@ int readFunc() {
 				dualshock4Data::ReportIn01USB inputUsb = {};
 				dualshock4Data::ReportIn01BT inputBt = {};
 
-				uint32_t res = -1;
+				int32_t res = -1;
 
 				if (isBt)
 					res = hid_read_timeout(controller.handle, reinterpret_cast<unsigned char*>(&inputBt), sizeof(inputBt), 0);
