@@ -1944,7 +1944,6 @@ int main() {
 
 	scePadSetAudioOutPath(handle2, SCE_PAD_AUDIO_PATH_ONLY_SPEAKER);
 	scePadSetVibrationMode(handle, SCE_PAD_RUMBLE_MODE);
-
 	s_ScePadVolumeGain volume = {};
 	volume.speakerVolume = 100;
 	volume.micGain = 64;
