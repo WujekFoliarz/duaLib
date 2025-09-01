@@ -14,10 +14,10 @@ set(COMPILE_TO_EXE OFF)
 
 if(COMPILE_TO_EXE)
 add_executable(${PROJECT_NAME} ${MY_SOURCES})
-target_compile_definitions(duaLib PUBLIC COMPILE_TO_EXE=1)
+target_compile_definitions(duaLib PRIVATE COMPILE_TO_EXE=1)
 else()
 add_library(${PROJECT_NAME} SHARED ${MY_SOURCES})
-target_compile_definitions(duaLib PUBLIC COMPILE_TO_EXE=0)
+target_compile_definitions(duaLib PRIVATE COMPILE_TO_EXE=0)
 endif()
 
 set_target_properties(duaLib PROPERTIES POSITION_INDEPENDENT_CODE ON)
