@@ -35,7 +35,7 @@ Use this [header](https://github.com/WujekFoliarz/duaLib/blob/master/src/include
 | int scePadClose(int handle)																|✅              | 
 | int scePadSetParticularMode(bool mode)                                                    |✅              | 
 | int scePadGetParticularMode();														    |✅              |
-| int scePadReadState(int handle, s_ScePadData* data)                                       |✅              | Big yaw drift in orientation, I recommend setting DeadbandState to true.
+| int scePadReadState(int handle, s_ScePadData* data)                                       |✅              | 
 | int scePadSetLightBar(int handle, s_SceLightBar* lightbar)                                |✅              |
 | int scePadGetContainerIdInformation(int handle, s_ScePadContainerIdInfo* containerIdInfo) |⚠️              | Windows only
 | int scePadGetControllerBusType(int handle, int* busType)                                  |✅              |
