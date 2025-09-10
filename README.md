@@ -16,6 +16,8 @@ git clone https://github.com/WujekFoliarz/duaLib.git --recursive
 ### Alternatively:
 
 Use this [header](https://github.com/WujekFoliarz/duaLib/blob/master/src/include/duaLib.h) with duaLib.lib and put compiled duaLib.dll and hidapi.dll in your out folder
+
+You can also easily tweak CMakeLists.txt and duaLib.h to compile statically
 #
 ```
 #include "duaLib.h"
