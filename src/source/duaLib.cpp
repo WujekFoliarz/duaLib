@@ -441,15 +441,15 @@ constexpr std::array<s_SceLightBar, 4> g_playerColors = { {
 
 int readFunc() {
 #if defined(_WIN32) || defined(_WIN64)
-	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
 	timeBeginPeriod(1);
 
-	DWORD_PTR affinityMask = 1;
-	SetThreadAffinityMask(GetCurrentThread(), affinityMask);
+	EXECUTION_STATE prevState = SetThreadExecutionState(
+		ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED
+	);
 
-	SetThreadIdealProcessor(GetCurrentThread(), 0);
-
-	HANDLE hTimer = CreateWaitableTimer(NULL, TRUE, NULL);
+	HANDLE hTimer = CreateWaitableTimerEx(NULL, NULL, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
 	LARGE_INTEGER liDueTime;
 #endif
 
