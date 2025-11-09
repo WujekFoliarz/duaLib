@@ -839,6 +839,8 @@ int watchFunc() {
 									report.Data.State.AllowRightTriggerFFB = true;
 									report.Data.State.AllowLeftTriggerFFB = true;
 									report.Data.State.AllowLedColor = true;
+									report.Data.State.AllowColorLightFadeAnimation = true;
+									report.Data.State.lightFadeAnimation = dualsenseData::LightFadeAnimation::FadeOut;
 									report.Data.State.ResetLights = true;
 									report.Data.State.LeftTriggerFFB[0] = (uint8_t)TriggerEffectType::Off;
 									report.Data.State.RightTriggerFFB[0] = (uint8_t)TriggerEffectType::Off;
