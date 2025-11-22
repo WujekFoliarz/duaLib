@@ -14,12 +14,6 @@
 #include <fstream>
 #include <iomanip> 
 
-#include <duaLibUtils.hpp>
-#include <readDualsense.hpp>
-#include <readDualshock4.hpp>
-
-#define M_PI 3.14159265358979323846  
-
 #if defined(_WIN32) || defined(_WIN64)
 #include <Windows.h>
 #include <setupapi.h>
@@ -35,6 +29,12 @@
 #include <clocale>
 #include <cstdlib>
 #endif
+
+#include <duaLibUtils.hpp>
+#include <readDualsense.hpp>
+#include <readDualshock4.hpp>
+
+#define M_PI 3.14159265358979323846  
 
 #include "duaLib.h"
 #include "dataStructures.h"
