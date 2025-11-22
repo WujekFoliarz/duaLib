@@ -25,6 +25,21 @@
 #include "crc.h"
 #include "triggerFactory.h"
 
+#if defined(_WIN32) || defined(_WIN64)
+#include <Windows.h>
+#include <setupapi.h>
+#pragma comment(lib, "setupapi.lib")
+#pragma comment(lib, "hid.lib")
+#pragma comment(lib, "winmm.lib")
+#include <initguid.h>
+#include <devpkey.h>
+#include <hidsdi.h>
+#include <codecvt>
+#include <locale>
+#else
+#include <clocale>
+#include <cstdlib>
+#endif
 
 #define ANGULAR_VELOCITY_DEADBAND_MIN 0.017453292
 
