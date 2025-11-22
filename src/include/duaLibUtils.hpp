@@ -6,6 +6,7 @@
 #include <string>
 #include <cstdint>
 #include <duaLib.h>
+#include <vector>
 
 #define UNKNOWN 0
 #define DUALSHOCK4 1
