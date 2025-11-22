@@ -2,6 +2,7 @@
 #include <duaLibUtils.hpp>
 #include <crc.h>
 #include <readDualshock4.hpp>
+#include <algorithm>
 
 bool ReadDualshock4(duaLibUtils::controller &controller)
 {

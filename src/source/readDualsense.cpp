@@ -2,6 +2,7 @@
 #include <duaLibUtils.hpp>
 #include <crc.h>
 #include <readDualsense.hpp>
+#include <algorithm>
 
 bool ReadDualsense(duaLibUtils::controller& controller)
 {
