@@ -1,6 +1,9 @@
 #ifndef DUALIB_DATA_STRUCTURES_H
 #define DUALIB_DATA_STRUCTURES_H
 
+#include <cstdint>
+#include <cstring>
+
 // Source https://controllers.fandom.com/wiki/Sony_DualSense
 //		  https://controllers.fandom.com/wiki/Sony_DualShock_4
 
