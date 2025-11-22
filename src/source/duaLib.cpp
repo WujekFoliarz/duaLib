@@ -91,8 +91,6 @@ int readFunc() {
 #endif
 
 	while (g_threadRunning) {
-		bool allInvalid = true;
-
 		for (auto& controller : g_controllers) {
 			if (controller.valid && controller.opened && controller.deviceType == DUALSENSE) {
 				ReadDualsense(controller);
@@ -104,10 +102,6 @@ int readFunc() {
 				std::shared_lock guard(controller.lock);
 				controller.wasDisconnected = true;
 			}
-		}
-
-		if (allInvalid) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 
 	#if defined(_WIN32) || defined(_WIN64)
